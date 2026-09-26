@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>鹈鹕骑行记 · 海滨大道</title>
+<style>
+:root{--card:rgba(255,255,255,.80);--line:rgba(30,50,80,.12);--fg:#1d2939;--sub:#5b6b80;--accent:#e8553d;--teal:#159a93;--blue:#1f7fb8}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#15253a;color:var(--fg);
+  font-family:system-ui,-apple-system,'Segoe UI','Microsoft YaHei','PingFang SC','Noto Sans CJK SC','Noto Sans SC',sans-serif;
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+#scene{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:default}
+#scene text{font-family:'Microsoft YaHei','PingFang SC','Noto Sans CJK SC','Noto Sans SC',sans-serif}
+.clickable{cursor:pointer}
+.card{background:var(--card);backdrop-filter:blur(10px) saturate(1.3);-webkit-backdrop-filter:blur(10px) saturate(1.3);
+  border:1px solid rgba(255,255,255,.6);box-shadow:0 8px 28px rgba(10,30,60,.18),0 1px 0 rgba(255,255,255,.6) inset;border-radius:16px}
+/* ---------- HUD ---------- */
+#hud{position:fixed;left:14px;top:14px;display:flex;gap:12px;align-items:center;padding:10px 14px 10px 10px;z-index:5}
+#gauge{width:112px;height:112px;flex:none}
+.stats{display:grid;grid-template-columns:auto auto;gap:3px 14px;font-size:13px;align-items:baseline}
+.stats .k{color:var(--sub)}
+.stats .v{font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+.stats .v small{font-weight:500;color:var(--sub);margin-left:2px}
+#hudTitle{grid-column:1/3;font-size:14px;font-weight:800;letter-spacing:.5px;margin-bottom:2px;color:#12324f}
+#hudTitle span{font-weight:500;color:var(--sub);font-size:12px;margin-left:4px}
+/* ---------- Panel ---------- */
+#panel{position:fixed;right:14px;top:14px;width:292px;z-index:6;overflow:hidden;transition:width .25s}
+#panel header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 8px 14px;font-weight:800;font-size:14px;color:#12324f}
+#panel header .btns{display:flex;gap:6px}
+.icon-btn{width:28px;height:28px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.7);cursor:pointer;
+  font:700 14px/1 inherit;color:var(--fg);display:grid;place-items:center;padding:0}
+.icon-btn:hover{background:#fff}
+#panelBody{padding:0 14px 12px;display:flex;flex-direction:column;gap:10px;max-height:calc(100vh - 80px);overflow:auto}
+#panel.collapsed{width:196px}
+#panel.collapsed #panelBody{display:none}
+.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.lbl{font-size:12px;color:var(--sub);min-width:52px}
+.sec{border-top:1px solid var(--line);padding-top:9px;display:flex;flex-direction:column;gap:8px}
+.sec-t{font-size:11px;color:var(--sub);letter-spacing:1px}
+button.b{flex:1;min-width:0;height:32px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.75);
+  font:600 13px inherit;color:var(--fg);cursor:pointer;transition:all .15s;white-space:nowrap;padding:0 8px}
+button.b:hover{background:#fff;transform:translateY(-1px)}
+button.b:active{transform:translateY(0)}
+button.b.on{background:linear-gradient(180deg,#1f8fc4,#16729f);color:#fff;border-color:transparent;box-shadow:0 3px 10px rgba(22,114,159,.35)}
+button.b.warn.on,button.b.warn:active{background:linear-gradient(180deg,#f06a4f,#d9452c);color:#fff;border-color:transparent}
+button.b kbd,.help kbd{font:600 10px/1 ui-monospace,Consolas,monospace;background:rgba(0,0,0,.07);border-radius:4px;padding:2px 4px;margin-left:4px;color:inherit;opacity:.8}
+button.b.on kbd{background:rgba(255,255,255,.25)}
+input[type=range]{flex:1;accent-color:var(--accent);height:22px;cursor:pointer}
+.val{font:700 13px ui-monospace,Consolas,monospace;min-width:62px;text-align:right}
+#gears{display:flex;gap:3px;flex:1;align-items:flex-end;height:26px}
+#gears i{flex:1;border-radius:3px;background:#cfd8e3;cursor:pointer;transition:background .2s}
+#gears i.on{background:var(--accent)}
+#gears i.cur{background:#b8321d;box-shadow:0 0 0 2px rgba(232,85,61,.25)}
+.ratio{font-size:12px;color:var(--sub)}
+.ratio b{color:var(--fg)}
+/* ---------- misc ---------- */
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);opacity:0;padding:8px 16px;border-radius:999px;
+  background:rgba(18,36,58,.85);color:#fff;font-size:13px;transition:all .3s;pointer-events:none;z-index:9;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#hint{position:fixed;left:14px;bottom:14px;font-size:12px;color:rgba(255,255,255,.92);text-shadow:0 1px 3px rgba(0,0,0,.5);z-index:4;pointer-events:none;line-height:1.6}
+#tip{position:fixed;pointer-events:none;z-index:10;padding:5px 9px;border-radius:8px;background:rgba(20,32,52,.92);color:#fff;font-size:12px;
+  transform:translate(12px,12px);opacity:0;transition:opacity .12s;white-space:nowrap}
+#tip.show{opacity:1}
+#tip b{color:#ffcf6e;margin-right:4px}
+.help{position:fixed;right:316px;top:14px;width:300px;padding:12px 14px;font-size:12.5px;z-index:7;display:none;line-height:1.5}
+.help.show{display:block}
+.help h4{margin:0 0 6px;font-size:14px}
+.help table{width:100%;border-collapse:collapse}
+.help td{padding:3px 0;border-bottom:1px dashed var(--line)}
+.help td:first-child{white-space:nowrap;width:104px}
+.help p{margin:8px 0 0;color:var(--sub)}
+@media (max-width:760px){
+  #hud{transform:scale(.82);transform-origin:0 0}
+  #panel{top:auto;bottom:12px;right:12px;left:12px;width:auto}
+  #panel.collapsed{left:auto;width:176px}
+  #panelBody{max-height:46vh}
+  .help{right:14px;top:auto;bottom:60px;width:calc(100vw - 28px)}
+  #hint{display:none}
+}
+</style>
+</head>
+<body>
+<svg id="scene" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-label="鹈鹕骑自行车动画">
+  <defs id="defs"></defs>
+  <g id="cam"></g>
+</svg>
+
+<div id="hud" class="card">
+  <svg id="gauge" viewBox="0 0 120 120"></svg>
+  <div class="stats">
+    <div id="hudTitle">鹈鹕号<span>海滨大道骑行中</span></div>
+    <span class="k">速度</span><span class="v" id="sSpeed">0<small>km/h</small></span>
+    <span class="k">踏频</span><span class="v" id="sCad">0<small>rpm</small></span>
+    <span class="k">档位</span><span class="v" id="sGear">4<small>/7</small></span>
+    <span class="k">齿比</span><span class="v" id="sRatio">44:18</span>
+    <span class="k">里程</span><span class="v" id="sOdo">0.00<small>km</small></span>
+    <span class="k">捕鱼</span><span class="v" id="sFish">0<small>条</small></span>
+  </div>
+</div>
+
+<div id="panel" class="card">
+  <header>
+    <span>骑行控制台</span>
+    <span class="btns"><button class="icon-btn" id="btnHelp" title="快捷键说明 (H)">?</button><button class="icon-btn" id="btnFold" title="折叠/展开">–</button></span>
+  </header>
+  <div id="panelBody">
+    <div class="row">
+      <button class="b on" id="btnPlay">暂停<kbd>P</kbd></button>
+      <button class="b" id="btnSlow">慢动作<kbd>M</kbd></button>
+      <button class="b on" id="btnSound">声音</button>
+    </div>
+    <div class="sec">
+      <div class="sec-t">踩踏与变速</div>
+      <div class="row"><span class="lbl">目标踏频</span><input type="range" id="cad" min="0" max="120" step="1" value="65"><span class="val" id="cadVal">65 rpm</span></div>
+      <div class="row"><span class="lbl">后飞轮</span>
+        <button class="icon-btn" id="gDown" title="降档 (Q)">−</button>
+        <div id="gears"></div>
+        <button class="icon-btn" id="gUp" title="升档 (E)">+</button>
+      </div>
+      <div class="ratio" id="ratioTxt">齿比 44 / 18 = <b>2.44</b> · 每踩一圈前进 <b>5.12 m</b></div>
+      <div class="row">
+        <button class="b warn" id="btnBrake">按住刹车<kbd>空格</kbd></button>
+        <button class="b" id="btnBell">按车铃<kbd>B</kbd></button>
+      </div>
+    </div>
+    <div class="sec">
+      <div class="sec-t">环境</div>
+      <div class="row">
+        <button class="b" id="btnNight">夜晚<kbd>N</kbd></button>
+        <button class="b" id="btnRain">下雨<kbd>R</kbd></button>
+        <button class="b" id="btnWind">大风<kbd>G</kbd></button>
+      </div>
+    </div>
+    <div class="sec">
+      <div class="sec-t">互动与观察</div>
+      <div class="row">
+        <button class="b" id="btnFish">抓鱼<kbd>F</kbd></button>
+        <button class="b" id="btnPoke">逗鹈鹕<kbd>C</kbd></button>
+      </div>
+      <div class="row">
+        <button class="b" id="btnLabels">显示结构<kbd>L</kbd></button>
+        <button class="b" id="btnView">视角复位<kbd>0</kbd></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="help card" id="help">
+  <h4>快捷键</h4>
+  <table>
+    <tr><td><kbd>↑</kbd><kbd>W</kbd> / <kbd>↓</kbd><kbd>S</kbd></td><td>提高 / 降低踏频（带惯性）</td></tr>
+    <tr><td><kbd>空格</kbd>（按住）</td><td>刹车，高速时后轮抱死留下刹车痕</td></tr>
+    <tr><td><kbd>Q</kbd> / <kbd>E</kbd></td><td>降档（更轻）/ 升档（更快）</td></tr>
+    <tr><td><kbd>B</kbd></td><td>按车铃 叮铃～</td></tr>
+    <tr><td><kbd>N</kbd></td><td>白天 / 夜晚</td></tr>
+    <tr><td><kbd>R</kbd> / <kbd>G</kbd></td><td>下雨 / 大风（可叠加成暴风雨）</td></tr>
+    <tr><td><kbd>F</kbd></td><td>让鹈鹕抓一条跃出水面的鱼</td></tr>
+    <tr><td><kbd>C</kbd></td><td>逗鹈鹕（车筐有鱼就吃一条）</td></tr>
+    <tr><td><kbd>L</kbd></td><td>显示 / 隐藏结构标注</td></tr>
+    <tr><td><kbd>M</kbd> / <kbd>P</kbd></td><td>慢动作 / 暂停</td></tr>
+    <tr><td><kbd>+</kbd> <kbd>−</kbd> <kbd>0</kbd></td><td>放大 / 缩小 / 复位（也可用滚轮、拖拽、双指）</td></tr>
+    <tr><td><kbd>H</kbd></td><td>显示本帮助</td></tr>
+  </table>
+  <p>鼠标悬停在车体或鹈鹕上可查看部件名称；点击鹈鹕与它互动，点击水里跳出的鱼，鹈鹕会去叼。</p>
+</div>
+<div id="toast"></div>
+<div id="tip"></div>
+<div id="hint">点击鹈鹕互动 · 点击跃出水面的鱼让它去叼 · 按 <b>H</b> 查看快捷键</div>
+<script>
+'use strict';
+/* =====================================================================
+ *  鹈鹕骑行记 —— 单文件交互动画（SVG + 原生 JS）
+ *  坐标系：viewBox 1600×900，比例尺 300 px = 1 m（车轮半径 100px ≈ 0.333m，周长 2.094m）
+ *  所有运动均由 requestAnimationFrame + delta-time 驱动。
+ * ===================================================================== */
+const NS = 'http://www.w3.org/2000/svg';
+const TAU = Math.PI * 2;
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const mod = (a, n) => ((a % n) + n) % n;
+const f1 = v => (Math.round(v * 10) / 10);
+const smooth = (cur, target, rate, dt) => cur + (target - cur) * (1 - Math.exp(-rate * dt));
+function el(tag, attrs, parent) {
+  const e = document.createElementNS(NS, tag);
+  if (attrs) for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function g(parent, attrs) { return el('g', attrs, parent); }
+function html(parent, str) { parent.insertAdjacentHTML('beforeend', str); return parent.lastElementChild; }
+function setT(e, s) { e.setAttribute('transform', s); }
+// 可复现的伪随机（场景布置保持稳定）
+function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const R1 = rng(20260926);
+const rand = (a, b) => a + Math.random() * (b - a);
+const srand = (a, b) => a + R1() * (b - a);
+// 旋转点
+function rot(p, c, ang) { const s = Math.sin(ang), co = Math.cos(ang), dx = p.x - c.x, dy = p.y - c.y; return { x: c.x + dx * co - dy * s, y: c.y + dx * s + dy * co }; }
+const P = (x, y) => ({ x, y });
+
+/* ---------------- 常量：物理 & 几何 ---------------- */
+const PX_PER_M = 300;
+const WR = 100;                         // 轮胎外径半径(px)
+const WHEEL_C = TAU * WR / PX_PER_M;    // 车轮周长(m) ≈ 2.094
+const CHAINRING = 44;                   // 牙盘齿数
+const CASSETTE = [28, 24, 21, 18, 16, 14, 12]; // 7 速飞轮（1 档最轻）
+const TOOTH_R = 0.75;                   // 每齿对应半径(px)，仅用于示意尺寸
+const CRANK = 44;                       // 曲柄长度(px) ≈ 147mm（示意）
+const GROUND_Y = 770;
+const GEO = {
+  RW: P(596, 670), FW: P(919, 670), BB: P(720, 690),
+  ST: P(673, 537),          // 立管顶（座管夹）
+  SEAT: P(662, 500),        // 座管顶
+  HT_T: P(860, 540), HT_B: P(876, 587),
+  STEM0: P(854.5, 524), STEM1: P(884, 513),
+  GRIP: P(840, 499),        // 把套中心
+  BELL: P(873, 505),
+  LAMP: P(1000, 548),
+  TAIL: P(494, 689),
+};
+const CR_R = CHAINRING * TOOTH_R;       // 33
+
+/* ---------------- 全局状态 ---------------- */
+const Q = new URLSearchParams(location.search + '&' + location.hash.replace(/^#/, ''));
+const S = {
+  t: 0, paused: false, slow: Q.get('slow') === '1', sound: true,
+  targetCad: +(Q.get('cadence') || 65), v: 0, crank: 0.35, crankW: 0, pedaling: true,
+  wheelR: 0, wheelF: 0, cogAng: 0, chainPos: 0, scroll: 0, dist: 0,
+  gear: clamp((+(Q.get('gear') || 4)) - 1, 0, 6), cogR: 0,
+  braking: false, brakeKey: false, brakeBtn: false, skidding: false,
+  night: Q.get('night') === '1', nightT: 0,
+  rain: /rain|storm/.test(Q.get('weather') || ''), wind: /wind|storm/.test(Q.get('weather') || ''),
+  rainT: 0, windT: 0,
+  labels: Q.get('labels') === '1',
+  zoom: 1, tx: 0, ty: 0,
+  fishCaught: 0, basketFish: +(Q.get('fish') || 2), eaten: 0,
+  mouth: 0, mouthTarget: 0, mouthTimer: 0,
+  pouchD: 0, pouchV: 0, pouchFish: 0, pouchFishTimer: 0,
+  blink: 0, nextBlink: 2.5, lean: 0, bob: 0, prevV: 0, accel: 0,
+  head: null, headV: P(0, 0),
+};
+S.cogR = CASSETTE[S.gear] * TOOTH_R;
+S.nightT = S.night ? 1 : 0; S.rainT = S.rain ? 1 : 0; S.windT = S.wind ? 1 : 0;
+const ratio = () => CHAINRING / CASSETTE[S.gear];
+const vTargetOf = cad => cad / 60 * ratio() * WHEEL_C;
+S.v = vTargetOf(S.targetCad);
+
+const svg = $('scene'), defs = $('defs'), cam = $('cam');
+
+/* =====================================================================
+ *  DEFS：渐变、滤镜、图案
+ * ===================================================================== */
+html(defs, `
+<linearGradient id="gSkyDay" x1="0" y1="0" x2="0" y2="1">
