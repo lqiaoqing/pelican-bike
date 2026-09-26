@@ -1,0 +1,256 @@
+  <stop offset="0" stop-color="#4fa7e3"/><stop offset=".55" stop-color="#9fd6f5"/><stop offset=".86" stop-color="#e3f3fb"/><stop offset="1" stop-color="#fdf0d8"/></linearGradient>
+<linearGradient id="gSkyNight" x1="0" y1="0" x2="0" y2="1">
+  <stop offset="0" stop-color="#0a1233"/><stop offset=".6" stop-color="#1a2a5e"/><stop offset="1" stop-color="#3e4f8a"/></linearGradient>
+<linearGradient id="gSea" x1="0" y1="0" x2="0" y2="1">
+  <stop offset="0" stop-color="#5fa9d3"/><stop offset=".35" stop-color="#2f8dc0"/><stop offset=".8" stop-color="#2aa3b8"/><stop offset="1" stop-color="#5cc7c4"/></linearGradient>
+<linearGradient id="gSand" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4dfae"/><stop offset="1" stop-color="#e2c080"/></linearGradient>
+<linearGradient id="gRoad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5a6069"/><stop offset=".5" stop-color="#4b5058"/><stop offset="1" stop-color="#40454c"/></linearGradient>
+<linearGradient id="gWalk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cfc6b8"/><stop offset="1" stop-color="#b9ae9d"/></linearGradient>
+<linearGradient id="gFrame" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7a5c"/><stop offset=".5" stop-color="#e8553d"/><stop offset="1" stop-color="#b93a26"/></linearGradient>
+<linearGradient id="gChrome" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f7f9"/><stop offset=".45" stop-color="#b9c3cc"/><stop offset=".55" stop-color="#8f9aa5"/><stop offset="1" stop-color="#d6dde3"/></linearGradient>
+<linearGradient id="gFender" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbf5e8"/><stop offset="1" stop-color="#e2d6bd"/></linearGradient>
+<linearGradient id="gLeather" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9a6238"/><stop offset="1" stop-color="#5e3719"/></linearGradient>
+<linearGradient id="gBody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".55" stop-color="#fbf1ec"/><stop offset="1" stop-color="#ecd6cf"/></linearGradient>
+<linearGradient id="gNeck" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#f3e6e0"/><stop offset=".6" stop-color="#fffaf7"/><stop offset="1" stop-color="#fff"/></linearGradient>
+<linearGradient id="gBill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#aebbc9"/><stop offset=".55" stop-color="#d7c2c0"/><stop offset="1" stop-color="#f0a585"/></linearGradient>
+<linearGradient id="gPouch" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f9d36a"/><stop offset=".7" stop-color="#f1ad45"/><stop offset="1" stop-color="#e38f33"/></linearGradient>
+<linearGradient id="gLeg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#f7a066"/><stop offset="1" stop-color="#e67a3c"/></linearGradient>
+<linearGradient id="gBottle" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7cc7f0"/><stop offset="1" stop-color="#2f8fca"/></linearGradient>
+<linearGradient id="gFish" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4f6f95"/><stop offset=".5" stop-color="#b8cde0"/><stop offset="1" stop-color="#f2f6fa"/></linearGradient>
+<linearGradient id="gBeam" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff6c8" stop-opacity=".85"/><stop offset="1" stop-color="#fff6c8" stop-opacity="0"/></linearGradient>
+<linearGradient id="gLhBeam" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fffbe0" stop-opacity=".8"/><stop offset="1" stop-color="#fffbe0" stop-opacity="0"/></linearGradient>
+<linearGradient id="gLampCone" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe7a6" stop-opacity=".55"/><stop offset="1" stop-color="#ffe7a6" stop-opacity="0"/></linearGradient>
+<linearGradient id="gPuddle" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9fc8e6"/><stop offset="1" stop-color="#5b7e9a"/></linearGradient>
+<linearGradient id="gNightShade" gradientUnits="userSpaceOnUse" x1="0" y1="-200" x2="0" y2="620">
+  <stop offset="0" stop-color="#1c2a63" stop-opacity=".2"/><stop offset=".55" stop-color="#1c2a63" stop-opacity=".45"/><stop offset="1" stop-color="#1c2a63" stop-opacity=".82"/></linearGradient>
+<radialGradient id="gSunGlow"><stop offset="0" stop-color="#fff7d1" stop-opacity=".95"/><stop offset=".25" stop-color="#ffe9a0" stop-opacity=".5"/><stop offset="1" stop-color="#ffe9a0" stop-opacity="0"/></radialGradient>
+<radialGradient id="gMoonGlow"><stop offset="0" stop-color="#e8f0ff" stop-opacity=".6"/><stop offset="1" stop-color="#e8f0ff" stop-opacity="0"/></radialGradient>
+<radialGradient id="gGlow"><stop offset="0" stop-color="#fff3c4" stop-opacity="1"/><stop offset=".3" stop-color="#ffd978" stop-opacity=".55"/><stop offset="1" stop-color="#ffd978" stop-opacity="0"/></radialGradient>
+<radialGradient id="gRedGlow"><stop offset="0" stop-color="#ff5a4a" stop-opacity=".9"/><stop offset="1" stop-color="#ff2a1a" stop-opacity="0"/></radialGradient>
+<radialGradient id="gShadow"><stop offset="0" stop-color="#1c2330" stop-opacity=".45"/><stop offset="1" stop-color="#1c2330" stop-opacity="0"/></radialGradient>
+<radialGradient id="gSpokeBlur"><stop offset=".08" stop-color="#9aa4ad" stop-opacity="0"/><stop offset=".12" stop-color="#b9c1c8" stop-opacity=".55"/><stop offset=".9" stop-color="#c8cfd5" stop-opacity=".28"/><stop offset="1" stop-color="#c8cfd5" stop-opacity="0"/></radialGradient>
+<radialGradient id="gPalmBall" cx=".4" cy=".35"><stop offset="0" stop-color="#8a6a3a"/><stop offset="1" stop-color="#4f3a1c"/></radialGradient>
+<filter id="fBlur4" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter>
+<filter id="fBlur8" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="8"/></filter>
+<filter id="fBlur2" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1.6"/></filter>
+<pattern id="pWicker" width="10" height="8" patternUnits="userSpaceOnUse">
+  <rect width="10" height="8" fill="#c78a4a"/><path d="M0 2h10M0 6h10" stroke="#a36a32" stroke-width="1.6"/>
+  <path d="M2.5 0v4M7.5 4v4" stroke="#8e5a28" stroke-width="1.4"/><path d="M0 1.2h10" stroke="#e3b27a" stroke-width=".6" opacity=".7"/></pattern>
+<pattern id="pPaver" width="60" height="30" patternUnits="userSpaceOnUse">
+  <rect width="60" height="30" fill="#c9bfae"/><path d="M0 .5h60M0 15.5h60M.5 0v15M30.5 15v15" stroke="#a79c89" stroke-width="1.2"/>
+  <rect x="3" y="3" width="24" height="10" fill="#d3cab9" opacity=".6"/><rect x="33" y="18" width="24" height="10" fill="#d3cab9" opacity=".5"/></pattern>
+<clipPath id="cpPouch"><path id="cpPouchPath" d=""/></clipPath>
+`);
+
+/* =====================================================================
+ *  滚动层工具
+ *  - Tile：内容按固定周期重复（路面标线、护栏等），用 translate 取模
+ *  - Loop：独立物体在周期内循环出现（棕榈、路牌、灯杆等）
+ *  factor = 视差系数（1 = 与路面同速）
+ * ===================================================================== */
+const tiles = [], loops = [];
+function Tile(parent, width, factor, drawFn, copies) {
+  const grp = g(parent); const n = copies || Math.ceil(1800 / width) + 1;
+  for (let i = 0; i < n; i++) drawFn(g(grp, { transform: `translate(${i * width},0)` }), i);
+  const t = { g: grp, w: width, f: factor, drift: 0, x0: -100 };
+  tiles.push(t); return t;
+}
+function Loop(parent, factor, period, margin) {
+  const L = { g: g(parent), f: factor, period, margin: margin || 300, items: [] };
+  L.add = (x, build, onWrap) => { const it = { x, g: g(L.g), cycle: -1, onWrap }; build(it.g, it); L.items.push(it); return it; };
+  loops.push(L); return L;
+}
+function updateScrollers(scroll) {
+  for (const t of tiles) setT(t.g, `translate(${f1(t.x0 - mod(scroll * t.f + t.drift, t.w))},0)`);
+  for (const L of loops) for (const it of L.items) {
+    const raw = it.x - scroll * L.f + L.margin;
+    const cyc = Math.floor(raw / L.period);
+    const sx = mod(raw, L.period) - L.margin;
+    if (cyc !== it.cycle) { if (it.cycle !== -1 && it.onWrap) it.onWrap(it); it.cycle = cyc; }
+    it.sx = sx;
+    setT(it.g, `translate(${f1(sx)},0)`);
+  }
+}
+
+/* =====================================================================
+ *  图层
+ * ===================================================================== */
+const L = {};
+['sky', 'stars', 'sunmoon', 'clouds', 'gulls', 'islands', 'headland', 'sea', 'boats', 'fish', 'beach', 'palms', 'rail', 'signs',
+  'road', 'roadFx', 'shadow', 'rig', 'splash', 'walk', 'front', 'dust', 'rainL', 'leaves', 'speed', 'nightShade', 'lights', 'stormShade',
+  'fly', 'labels', 'bubble'].forEach(k => L[k] = g(cam, { id: 'L_' + k }));
+['stars', 'nightShade', 'lights', 'stormShade', 'rainL', 'leaves', 'speed', 'dust', 'splash', 'labels', 'bubble', 'fly'].forEach(k => L[k].style.pointerEvents = 'none');
+
+/* ---------------- 天空 ---------------- */
+el('rect', { x: -400, y: -1400, width: 2400, height: 1840, fill: 'url(#gSkyDay)' }, L.sky);
+const skyNight = el('rect', { x: -400, y: -1400, width: 2400, height: 1840, fill: 'url(#gSkyNight)', opacity: 0 }, L.sky);
+const skyStorm = el('rect', { x: -400, y: -1400, width: 2400, height: 1840, fill: '#8d99a6', opacity: 0 }, L.sky);
+// 星星（夜晚在暗化层之上绘制）
+const stars = [];
+for (let i = 0; i < 150; i++) {
+  const x = srand(-100, 1700), y = srand(-400, 380), r = srand(.6, 1.9);
+  stars.push({ e: el('circle', { cx: f1(x), cy: f1(y), r: f1(r), fill: '#fff' }, L.stars), ph: srand(0, TAU), sp: srand(1, 3) });
+}
+for (let i = 0; i < 4; i++) { // 几颗带十字光芒的亮星
+  const x = srand(100, 1500), y = srand(40, 300);
+  html(L.stars, `<path d="M${x} ${y - 6}L${x + 1} ${y - 1}L${x + 6} ${y}L${x + 1} ${y + 1}L${x} ${y + 6}L${x - 1} ${y + 1}L${x - 6} ${y}L${x - 1} ${y - 1}Z" fill="#fff"/>`);
+}
+L.stars.style.opacity = 0;
+// 太阳
+const SUN_X = 1130;
+const sun = g(L.sunmoon, { transform: `translate(${SUN_X},150)` });
+el('circle', { r: 190, fill: 'url(#gSunGlow)' }, sun);
+const sunRays = g(sun);
+for (let i = 0; i < 12; i++) el('path', { d: 'M0 -62 L6 -84 L0 -80 L-6 -84Z', fill: '#fff0b0', opacity: .55, transform: `rotate(${i * 30})` }, sunRays);
+el('circle', { r: 48, fill: '#fff6cf' }, sun); el('circle', { r: 42, fill: '#ffe98a' }, sun);
+// 月亮
+const moon = g(L.stars, { transform: 'translate(1080,120)' });
+el('circle', { r: 150, fill: 'url(#gMoonGlow)' }, moon);
+el('circle', { r: 38, fill: '#f5f1dc' }, moon);
+html(moon, `<g fill="#dcd6bb"><circle cx="-12" cy="-8" r="7"/><circle cx="10" cy="12" r="9"/><circle cx="14" cy="-14" r="4"/><circle cx="-14" cy="16" r="3.5"/></g>`);
+el('path', { d: 'M-2 -38 A38 38 0 0 1 -2 38 A30 38 0 0 0 -2 -38Z', fill: '#000', opacity: .06 }, moon);
+
+/* ---------------- 云 ---------------- */
+const clouds = [];
+function cloudShape(parent, w) {
+  const c = g(parent); const n = 5 + Math.floor(R1() * 3); let x = -w / 2;
+  const body = g(c);
+  el('ellipse', { cx: 0, cy: 10, rx: w * .55, ry: 14, fill: '#dfe9f2' }, body);
+  for (let i = 0; i < n; i++) {
+    const r = srand(18, 34) * (1 - Math.abs(i - n / 2) / n * .9) * (w / 180);
+    el('circle', { cx: f1(x + w * i / (n - 1)), cy: f1(-r * .45 + 6), r: f1(r + 8), fill: '#fff' }, body);
+  }
+  el('ellipse', { cx: 0, cy: 16, rx: w * .5, ry: 7, fill: '#cfdceb', opacity: .8 }, body);
+  return c;
+}
+for (let i = 0; i < 7; i++) {
+  const w = srand(140, 280);
+  const c = cloudShape(L.clouds, w);
+  clouds.push({ g: c, x: srand(-200, 1800), y: srand(40, 300), s: srand(.6, 1.15), sp: srand(6, 14), w });
+}
+
+// 雨天乌云层（随雨量淡入）
+const stormClouds = g(L.clouds, { opacity: 0 });
+for (let i = 0; i < 9; i++) {
+  const c = cloudShape(stormClouds, srand(220, 380));
+  c.querySelectorAll('circle,ellipse').forEach((e, k) => e.setAttribute('fill', ['#7d8894', '#8f9aa6', '#6c7682'][k % 3]));
+  clouds.push({ g: c, x: srand(-200, 1800), y: srand(10, 220), s: srand(.9, 1.4), sp: srand(10, 18), w: 300 });
+}
+/* ---------------- 海鸥（远） ---------------- */
+const gulls = [];
+for (let i = 0; i < 4; i++) {
+  const gg = g(L.gulls);
+  const p = el('path', { fill: 'none', stroke: '#394556', 'stroke-width': 2.4, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, gg);
+  const b = el('ellipse', { rx: 5, ry: 2.2, fill: '#f4f6f8', stroke: '#394556', 'stroke-width': .8 }, gg);
+  gulls.push({ g: gg, p, x: srand(0, 1600), y: srand(80, 330), vx: srand(-60, -20) * (R1() < .3 ? -1 : 1), ph: srand(0, TAU), s: srand(.6, 1.2), fr: srand(5, 7) });
+}
+
+/* ---------------- 远处岛屿 & 灯塔岬角 ---------------- */
+const HORIZON = 430;
+Tile(L.islands, 1600, 0.02, (gr) => {
+  html(gr, `<path d="M0 ${HORIZON} L120 ${HORIZON} Q170 ${HORIZON - 18} 230 ${HORIZON - 10} Q290 ${HORIZON - 30} 360 ${HORIZON - 6} L360 ${HORIZON}
+    M700 ${HORIZON} Q760 ${HORIZON - 26} 820 ${HORIZON - 16} Q880 ${HORIZON - 40} 960 ${HORIZON - 12} Q1010 ${HORIZON - 8} 1040 ${HORIZON} Z" fill="#9fbfd6"/>
+    <path d="M360 ${HORIZON} Q420 ${HORIZON - 12} 470 ${HORIZON} Z M1250 ${HORIZON} Q1300 ${HORIZON - 16} 1380 ${HORIZON - 5} Q1420 ${HORIZON - 3} 1440 ${HORIZON}Z" fill="#b3cde0"/>`);
+});
+const headland = Loop(L.headland, 0.06, 2600, 500);
+let lhLantern = null;
+headland.add(1150, (gr) => {
+  html(gr, `
+  <path d="M-140 ${HORIZON + 6} Q-110 ${HORIZON - 30} -60 ${HORIZON - 44} Q-20 ${HORIZON - 70} 40 ${HORIZON - 64} Q90 ${HORIZON - 60} 120 ${HORIZON - 30} Q170 ${HORIZON - 10} 230 ${HORIZON + 6}Z" fill="#7d9a8a"/>
+  <path d="M-140 ${HORIZON + 6} Q-100 ${HORIZON - 16} -40 ${HORIZON - 22} Q30 ${HORIZON - 30} 90 ${HORIZON - 14} Q160 ${HORIZON - 4} 230 ${HORIZON + 6}Z" fill="#6b8676"/>
+  <path d="M-60 ${HORIZON - 44} Q-20 ${HORIZON - 70} 40 ${HORIZON - 64} L30 ${HORIZON - 56} Q-10 ${HORIZON - 58} -40 ${HORIZON - 40}Z" fill="#9db69f"/>
+  <g transform="translate(20 ${HORIZON - 62})">
+    <path d="M-11 0 L-7 -74 L7 -74 L11 0Z" fill="#fbfbf7"/>
+    <path d="M-10.2 -14 L-9.4 -28 L9.4 -28 L10.2 -14Z M-8.6 -42 L-7.8 -56 L7.8 -56 L8.6 -42Z" fill="#d9493a"/>
+    <path d="M1 0 L1 -74 L7 -74 L11 0Z" fill="#000" opacity=".08"/>
+    <rect x="-11" y="-80" width="22" height="6" fill="#39424f"/>
+    <rect x="-7" y="-94" width="14" height="14" fill="#ffe9a8" class="lhwin"/>
+    <path d="M-7 -94 h14 M0 -94 v14" stroke="#39424f" stroke-width="1.2"/>
+    <path d="M-9 -94 Q0 -106 9 -94Z" fill="#c43a2d"/><rect x="-1" y="-110" width="2" height="8" fill="#39424f"/>
+    <rect x="-14" y="-4" width="28" height="6" fill="#e9e4da"/><rect x="-3" y="-24" width="6" height="8" fill="#5a6470"/>
+  </g>`);
+  lhLantern = gr;
+});
+
+/* ---------------- 海面 ---------------- */
+const SEA_BOT = 590;
+el('rect', { x: -400, y: HORIZON, width: 2400, height: SEA_BOT - HORIZON + 20, fill: 'url(#gSea)' }, L.sea);
+const seaStorm = el('rect', { x: -400, y: HORIZON, width: 2400, height: SEA_BOT - HORIZON + 20, fill: '#5f7483', opacity: 0 }, L.sea);
+el('rect', { x: -400, y: HORIZON - 1, width: 2400, height: 3, fill: '#d6ecf7', opacity: .7 }, L.sea);
+// 太阳/月亮倒影闪光
+const glitter = g(L.sea);
+const glints = [];
+for (let i = 0; i < 26; i++) {
+  const yy = HORIZON + 6 + Math.pow(i / 26, 1.4) * 140, w = 8 + i * 1.4;
+  glints.push(el('rect', { x: f1(SUN_X - w / 2 + srand(-30, 30) * (i / 26 + .3)), y: f1(yy), width: f1(w), height: 1.6 + i * .06, rx: 1, fill: '#fffbe6', opacity: .6 }, glitter));
+}
+// 波浪行（越近越大、视差越大）
+const waveRows = [];
+for (let r = 0; r < 7; r++) {
+  const k = r / 6, y = HORIZON + 10 + Math.pow(k, 1.3) * 140, sc = .35 + k * 1.1, w = 300;
+  const tile = Tile(L.sea, w, 0.05 + k * .3, (gr, idx) => {
+    let d = '';
+    for (let j = 0; j < 4; j++) {
+      const x = srand(0, w), yy = y + srand(-5, 5) * sc, len = srand(14, 30) * sc;
+      d += `M${f1(x)} ${f1(yy)} q${f1(len / 2)} ${f1(-4 * sc)} ${f1(len)} 0 `;
+    }
+    el('path', { d, fill: 'none', stroke: '#e8f7ff', 'stroke-width': f1(1 + sc * .9), 'stroke-linecap': 'round', opacity: .55 + k * .3 }, gr);
+  });
+  tile.speed = 8 + k * 16;
+  waveRows.push(tile);
+}
+// 帆船
+const boats = [];
+function boatShape(parent, s, hue) {
+  return html(parent, `<g transform="scale(${s})">
+    <path d="M-34 0 L34 0 L26 10 L-26 10Z" fill="#2d3e55"/><path d="M-34 0 L34 0 L32 3 L-32 3Z" fill="#fff" opacity=".9"/>
+    <rect x="-1.4" y="-78" width="2.8" height="78" fill="#4a3b2c"/>
+    <path d="M2 -76 Q30 -40 30 -4 L2 -4Z" fill="#fffdf6"/><path d="M-2 -66 Q-22 -34 -26 -6 L-2 -6Z" fill="${hue}"/>
+    <path d="M2 -76 Q30 -40 30 -4 L22 -4 Q20 -40 2 -70Z" fill="#000" opacity=".06"/>
+    <path d="M1 -80 L12 -76 L1 -72Z" fill="#e8553d"/></g>`);
+}
+[[300, 470, .55, '#f2b33d'], [980, 452, .38, '#5fb3e0'], [1480, 505, .75, '#e8553d']].forEach(([x, y, s, c]) => {
+  const bg = g(L.boats); const inner = g(bg); boatShape(inner, s, c);
+  boats.push({ g: bg, inner, x, y, s, sp: srand(8, 20), ph: srand(0, TAU) });
+});
+
+/* ---------------- 海滩 ---------------- */
+const BEACH_TOP = 588, BEACH_BOT = 632;
+el('rect', { x: -400, y: BEACH_TOP, width: 2400, height: BEACH_BOT - BEACH_TOP + 10, fill: 'url(#gSand)' }, L.beach);
+// 浪花泡沫线
+const foam = Tile(L.beach, 400, 0.45, (gr) => {
+  el('path', { d: `M0 ${BEACH_TOP + 1} Q50 ${BEACH_TOP + 7} 100 ${BEACH_TOP + 2} T200 ${BEACH_TOP + 2} T300 ${BEACH_TOP + 3} T400 ${BEACH_TOP + 1} L400 ${BEACH_TOP - 4} L0 ${BEACH_TOP - 4}Z`, fill: '#f2fbff', opacity: .9 }, gr);
+  el('path', { d: `M0 ${BEACH_TOP + 6} Q50 ${BEACH_TOP + 11} 100 ${BEACH_TOP + 7} T200 ${BEACH_TOP + 6} T300 ${BEACH_TOP + 8} T400 ${BEACH_TOP + 6}`, fill: 'none', stroke: '#d8b77a', 'stroke-width': 1.5, opacity: .6 }, gr);
+});
+const foamG = foam.g;
+Tile(L.beach, 500, 0.5, (gr) => {
+  for (let i = 0; i < 14; i++) {
+    const x = srand(0, 500), y = srand(BEACH_TOP + 12, BEACH_BOT), t = R1();
+    if (t < .5) el('ellipse', { cx: f1(x), cy: f1(y), rx: f1(srand(1, 3)), ry: 1, fill: '#caa76a', opacity: .7 }, gr);
+    else if (t < .75) html(gr, `<path d="M${f1(x)} ${f1(y)} a4 3 0 0 1 8 0Z" fill="#f7e8e2" stroke="#d9b7a8" stroke-width=".6"/>`);
+    else if (t < .9) html(gr, `<path d="M${f1(x)} ${f1(y)} l3 -6 l3 6 l5 -2 l-4 4 l2 4 l-6 -2 l-5 3 l1 -4 l-4 -2Z" fill="#f08a5d" transform="scale(.8) translate(${f1(x * .25)} ${f1(y * .25)})"/>`);
+    else el('ellipse', { cx: f1(x), cy: f1(y), rx: f1(srand(4, 9)), ry: f1(srand(2, 4)), fill: '#a99c8a' }, gr);
+  }
+});
+// 螃蟹
+const crabs = [];
+const crabLoop = Loop(L.beach, 0.5, 1900, 200);
+function crabShape(gr) {
+  const c = g(gr);
+  const legs = [];
+  for (let side of [-1, 1]) for (let i = 0; i < 3; i++) legs.push(el('path', { d: '', stroke: '#b8321d', 'stroke-width': 1.6, fill: 'none', 'stroke-linecap': 'round' }, c));
+  html(c, `<path d="M-10 -6 q-8 -10 -3 -14 q2 4 5 4 q-2 4 -2 10Z M10 -6 q8 -10 3 -14 q-2 4 -5 4 q2 4 2 10Z" fill="#d9442c"/>
+    <ellipse cx="0" cy="-4" rx="11" ry="7" fill="#e5553a"/><ellipse cx="-2" cy="-7" rx="6" ry="2.5" fill="#f5876d"/>
+    <path d="M-3 -10 v-5 M3 -10 v-5" stroke="#8a2a1a" stroke-width="1.2"/><circle cx="-3" cy="-15" r="1.6" fill="#222"/><circle cx="3" cy="-15" r="1.6" fill="#222"/>`);
+  return { c, legs };
+}
+for (const x0 of [420, 1400]) {
+  crabLoop.add(x0, (gr, it) => { it.crab = crabShape(gr); it.ox = 0; it.dir = 1; it.ph = srand(0, 6); it.y = srand(BEACH_TOP + 22, BEACH_BOT - 4); crabs.push(it); });
+}
+
+/* ---------------- 棕榈 & 沙滩元素 ---------------- */
+const palms = [];
+function palmShape(gr, h, lean) {
+  const pg = g(gr);
+  const top = P(lean * h * .35, -h);
+  const c1 = P(lean * h * .05, -h * .45), c2 = P(lean * h * .3, -h * .8);
