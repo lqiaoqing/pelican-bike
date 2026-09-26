@@ -190,18 +190,19 @@ const labelEls = labelDefs.map(d => {
   el('rect', { x: -w / 2, y: -12, width: 4, height: 24, rx: 2, fill: d.color }, box);
   const tx = el('text', { x: 2, y: 4.5, 'font-size': 13, 'font-weight': 700, fill: '#1d2939', 'text-anchor': 'middle' }, box);
   tx.textContent = d.text;
-  return { d, line, dot, w };
+  return { d, line, dot, w, box, lx: d.lx, ly: d.ly, k: 1 };
 });
 L.labels.style.display = 'none';
 function updateLabels() {
   for (const o of labelEls) {
     const a = o.d.anchor(); if (!a) continue;
-    const lx = o.d.lx, ly = o.d.ly;
-    const ex = clamp(a.x, lx - o.w / 2, lx + o.w / 2), ey = a.y < ly ? ly - 12 : ly + 12;
-    const bx = Math.abs(a.x - lx) > o.w / 2 ? (a.x < lx ? lx - o.w / 2 : lx + o.w / 2) : ex;
-    const by = Math.abs(a.x - lx) > o.w / 2 ? ly : ey;
+    const lx = o.lx, ly = o.ly, hw = o.w * o.k / 2, hh = 12 * o.k;
+    const ex = clamp(a.x, lx - hw, lx + hw), ey = a.y < ly ? ly - hh : ly + hh;
+    const bx = Math.abs(a.x - lx) > hw ? (a.x < lx ? lx - hw : lx + hw) : ex;
+    const by = Math.abs(a.x - lx) > hw ? ly : ey;
     o.line.setAttribute('d', `M${f1(a.x)} ${f1(a.y)}L${f1(bx)} ${f1(by)}`);
     o.dot.setAttribute('cx', f1(a.x)); o.dot.setAttribute('cy', f1(a.y));
+    o.line.setAttribute('stroke-width', f1(1.4 * Math.max(1, o.k * .8) * 10) / 10); o.dot.setAttribute('r', f1(3.2 * Math.max(1, o.k * .8) * 10) / 10);
   }
 }
 
@@ -253,4 +254,19 @@ const actions = {
   night() { S.night = !S.night; refreshUI(); toast(S.night ? '夜幕降临，车灯自动点亮' : '天亮啦'); },
   rain() { S.rain = !S.rain; refreshUI(); toast(S.rain ? (S.wind ? '暴风雨来了！' : '下雨了，路面湿滑') : '雨停了'); },
   wind() { S.wind = !S.wind; refreshUI(); toast(S.wind ? '起风了（逆风，更费力）' : '风停了'); },
-  labels() { S.labels = !S.labels; refreshUI(); },
+  labels() { S.labels = !S.labels; refreshUI(); if (portrait) fitAspect(true); },
+  fish() { autoCatch(); },
+  poke() { pokePelican(); },
+  view() { S.zoom = 1; S.tx = 0; S.ty = 0; applyCam(); },
+  bell() { ringBell(); },
+};
+$('btnPlay').onclick = actions.play; $('btnSlow').onclick = actions.slow; $('btnSound').onclick = actions.sound;
+$('btnNight').onclick = actions.night; $('btnRain').onclick = actions.rain; $('btnWind').onclick = actions.wind;
+$('btnLabels').onclick = actions.labels; $('btnFish').onclick = actions.fish; $('btnPoke').onclick = actions.poke;
+$('btnView').onclick = actions.view; $('btnBell').onclick = actions.bell;
+$('gDown').onclick = () => setGear(S.gear - 1); $('gUp').onclick = () => setGear(S.gear + 1);
+$('cad').oninput = e => setCad(+e.target.value);
+const brakeBtn = $('btnBrake');
+const brakeOn = e => { e.preventDefault(); S.brakeBtn = true; brakeBtn.classList.add('on'); audio(); };
+const brakeOff = () => { S.brakeBtn = false; brakeBtn.classList.remove('on'); };
+brakeBtn.addEventListener('pointerdown', brakeOn); ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => brakeBtn.addEventListener(ev, brakeOff));
