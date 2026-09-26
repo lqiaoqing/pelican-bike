@@ -1,0 +1,256 @@
+  // 树干（分段环纹）
+  let segs = '';
+  const N = 16;
+  for (let i = 0; i < N; i++) {
+    const t0 = i / N, t1 = (i + 1) / N;
+    const b = t => { const u = 1 - t; return P(u * u * u * 0 + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t * t * t * top.x, 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t * t * t * top.y); };
+    const p0 = b(t0), p1 = b(t1), w0 = lerp(11, 6, t0), w1 = lerp(11, 6, t1);
+    segs += `<path d="M${f1(p0.x - w0)} ${f1(p0.y)} L${f1(p1.x - w1)} ${f1(p1.y + 1)} Q${f1(p1.x)} ${f1(p1.y + 4)} ${f1(p1.x + w1)} ${f1(p1.y + 1)} L${f1(p0.x + w0)} ${f1(p0.y)} Q${f1(p0.x)} ${f1(p0.y + 4)} ${f1(p0.x - w0)} ${f1(p0.y)}Z" fill="${i % 2 ? '#9a7447' : '#8a6639'}"/>`;
+  }
+  html(pg, `<g>${segs}</g>`);
+  const crown = g(pg, { transform: `translate(${f1(top.x)},${f1(top.y)})` });
+  const fronds = g(crown);
+  const angs = [-170, -140, -110, -70, -40, -10, 20, 160];
+  angs.forEach((a, i) => {
+    const len = srand(90, 120) * h / 250, droop = srand(.3, .55);
+    const fr = g(fronds, { transform: `rotate(${a})` });
+    // 羽状叶：主脉 + 两侧叶片
+    let d = `M0 0 Q${f1(len * .5)} ${f1(-len * .18)} ${f1(len)} ${f1(len * droop)}`;
+    let leaflets = '';
+    for (let k = 1; k < 12; k++) {
+      const t = k / 12, x = len * t, y = -len * .18 * 2 * t * (1 - t) + len * droop * t * t;
+      const ll = 22 * (1 - t * .6) * h / 250;
+      leaflets += `M${f1(x)} ${f1(y)} l${f1(ll * .45)} ${f1(ll)} M${f1(x)} ${f1(y)} l${f1(ll * .7)} ${f1(-ll * .55)} `;
+    }
+    el('path', { d: leaflets, stroke: i % 2 ? '#2f8a4f' : '#3a9b5a', 'stroke-width': 4.2, 'stroke-linecap': 'round', fill: 'none' }, fr);
+    el('path', { d, stroke: '#2d6e3f', 'stroke-width': 3, fill: 'none', 'stroke-linecap': 'round' }, fr);
+  });
+  html(crown, `<circle cx="-5" cy="4" r="6" fill="url(#gPalmBall)"/><circle cx="4" cy="6" r="6" fill="url(#gPalmBall)"/><circle cx="0" cy="-1" r="5.5" fill="url(#gPalmBall)"/>`);
+  return { pg, fronds };
+}
+const palmLoop = Loop(L.palms, 0.55, 2400, 300);
+[[120, 250, .25], [520, 200, -.18], [1180, 270, .3], [1700, 220, -.1], [2150, 240, .2]].forEach(([x, h, ln]) => {
+  palmLoop.add(x, (gr, it) => {
+    el('ellipse', { cx: 0, cy: BEACH_BOT - 4, rx: 30, ry: 5, fill: '#b99a62', opacity: .5 }, gr);
+    const p = palmShape(g(gr, { transform: `translate(0,${BEACH_BOT - 6})` }), h, ln);
+    palms.push({ fr: p.fronds, ph: srand(0, TAU) });
+  });
+});
+// 沙滩伞 & 救生圈
+palmLoop.add(860, (gr) => {
+  html(gr, `<g transform="translate(0 ${BEACH_BOT - 6})">
+    <ellipse cx="6" cy="2" rx="42" ry="5" fill="#b99a62" opacity=".5"/>
+    <rect x="-1.5" y="-92" width="3" height="94" fill="#8c7a66" transform="rotate(8)"/>
+    <g transform="rotate(8) translate(0 -92)">
+      <path d="M-58 14 Q0 -26 58 14Z" fill="#fff"/>
+      <path d="M-58 14 Q-40 -6 -24 -8 L-20 12 Q-40 8 -58 14Z M-6 -12 Q8 -12 20 -6 L20 12 Q6 10 -6 11Z M36 -2 Q48 4 58 14 Q48 10 38 11Z" fill="#e8553d"/>
+      <path d="M-58 14 Q-50 18 -40 14 Q-30 18 -20 13 Q-10 17 0 12 Q10 17 20 12 Q30 17 40 13 Q50 18 58 14" fill="none" stroke="#fff" stroke-width="2"/>
+    </g>
+    <path d="M-40 0 l24 -14 l20 0 l-24 14Z" fill="#3aa0d8"/><path d="M-40 0 l24 -14" stroke="#1e6b98" stroke-width="2"/>
+  </g>`);
+});
+palmLoop.add(1500, (gr) => {
+  html(gr, `<g transform="translate(0 ${BEACH_BOT - 6})">
+    <rect x="-2" y="-58" width="4" height="58" fill="#6b5b4a"/>
+    <rect x="-24" y="-74" width="48" height="20" rx="3" fill="#fff" stroke="#c9c1b3"/>
+    <text x="0" y="-60" text-anchor="middle" font-size="11" font-weight="700" fill="#d9442c">海滨浴场</text>
+    <circle cx="0" cy="-34" r="11" fill="none" stroke="#f05a3c" stroke-width="6"/>
+    <path d="M-11 -34 h5 M6 -34 h5 M0 -45 v5 M0 -28 v5" stroke="#fff" stroke-width="6.2"/>
+  </g>`);
+});
+
+/* ---------------- 护栏 & 路灯 ---------------- */
+const RAIL_Y = 642;
+Tile(L.rail, 360, 0.82, (gr) => {
+  let d = '';
+  for (let i = 0; i < 6; i++) d += `M${i * 60 + 3} ${RAIL_Y} v-30 `;
+  el('path', { d, stroke: '#e9eef3', 'stroke-width': 5, 'stroke-linecap': 'round' }, gr);
+  el('path', { d: d.replace(/M(\d+)/g, (m, x) => 'M' + (+x + 1.8)), stroke: '#9aa9b8', 'stroke-width': 1.4 }, gr);
+  el('path', { d: `M0 ${RAIL_Y - 30} H360 M0 ${RAIL_Y - 17} H360`, stroke: '#2f7fb4', 'stroke-width': 4 }, gr);
+  el('path', { d: `M0 ${RAIL_Y - 31.5} H360`, stroke: '#7fc0e8', 'stroke-width': 1.2 }, gr);
+  el('rect', { x: 0, y: RAIL_Y - 2, width: 360, height: 6, fill: '#a4998a' }, gr);
+});
+const lampLoop = Loop(L.rail, 0.84, 1500, 250);
+const lamps = [];
+for (const x0 of [180, 930]) lampLoop.add(x0, (gr, it) => {
+  html(gr, `<g>
+    <rect x="-5" y="${RAIL_Y - 8}" width="10" height="10" rx="2" fill="#56606b"/>
+    <path d="M-2.5 ${RAIL_Y - 8} V${RAIL_Y - 250} Q-2.5 ${RAIL_Y - 268} 16 ${RAIL_Y - 268} H40" fill="none" stroke="#56606b" stroke-width="5"/>
+    <path d="M28 ${RAIL_Y - 272} h30 l-4 8 h-22Z" fill="#454d57"/><rect x="33" y="${RAIL_Y - 264}" width="20" height="3" rx="1.5" fill="#fff4cf" class="lampbulb"/>
+    <path d="M-6 ${RAIL_Y - 150} h14 v36 h-14Z" fill="#2f7fb4"/><text x="1" y="${RAIL_Y - 128}" text-anchor="middle" font-size="9" fill="#fff" font-weight="700">海</text>
+  </g>`);
+  lamps.push(it);
+});
+
+/* ---------------- 路牌 ---------------- */
+const SIGN_Y = 648;
+const signDefs = [
+  gr => `<g><rect x="-3" y="${SIGN_Y - 150}" width="6" height="150" fill="#8d99a6"/>
+    <rect x="-70" y="${SIGN_Y - 190}" width="140" height="56" rx="5" fill="#1f5fae" stroke="#fff" stroke-width="3"/>
+    <text x="0" y="${SIGN_Y - 160}" text-anchor="middle" font-size="24" font-weight="800" fill="#fff" letter-spacing="3">海滨大道</text>
+    <text x="0" y="${SIGN_Y - 142}" text-anchor="middle" font-size="10" fill="#dce9f7" letter-spacing="2">BINHAI AVENUE</text></g>`,
+  gr => `<g><rect x="-3" y="${SIGN_Y - 130}" width="6" height="130" fill="#8d99a6"/>
+    <path d="M0 ${SIGN_Y - 200} L40 ${SIGN_Y - 132} L-40 ${SIGN_Y - 132}Z" fill="#f6c42f" stroke="#1d1d1d" stroke-width="4" stroke-linejoin="round"/>
+    <g transform="translate(0 ${SIGN_Y - 152}) scale(.5)" fill="#1d1d1d">
+      <circle cx="-22" cy="10" r="12" fill="none" stroke="#1d1d1d" stroke-width="4"/><circle cx="22" cy="10" r="12" fill="none" stroke="#1d1d1d" stroke-width="4"/>
+      <path d="M-22 10 L-4 -8 L16 -8 L22 10 M-4 -8 L2 10 L-22 10" fill="none" stroke="#1d1d1d" stroke-width="4"/>
+      <ellipse cx="0" cy="-22" rx="16" ry="11"/><path d="M10 -30 q6 -18 12 -20 q4 0 4 5 L50 -38 L26 -34 q-8 2 -10 8Z"/></g>
+    <rect x="-38" y="${SIGN_Y - 126}" width="76" height="22" rx="3" fill="#fff" stroke="#1d1d1d" stroke-width="2"/>
+    <text x="0" y="${SIGN_Y - 110}" text-anchor="middle" font-size="13" font-weight="800" fill="#1d1d1d">注意鹈鹕</text></g>`,
+  gr => `<g><rect x="-3" y="${SIGN_Y - 140}" width="6" height="140" fill="#8d99a6"/>
+    <rect x="-66" y="${SIGN_Y - 200}" width="132" height="66" rx="5" fill="#138a52" stroke="#fff" stroke-width="3"/>
+    <text x="-54" y="${SIGN_Y - 176}" font-size="15" font-weight="700" fill="#fff">灯塔</text><text x="54" y="${SIGN_Y - 176}" text-anchor="end" font-size="15" font-weight="700" fill="#fff">2 km</text>
+    <text x="-54" y="${SIGN_Y - 150}" font-size="15" font-weight="700" fill="#fff">渔人码头</text><text x="54" y="${SIGN_Y - 150}" text-anchor="end" font-size="15" font-weight="700" fill="#fff">5 km</text>
+    <path d="M-54 ${SIGN_Y - 168} H54" stroke="#fff" stroke-width="1" opacity=".5"/></g>`,
+  gr => `<g><rect x="-3" y="${SIGN_Y - 120}" width="6" height="120" fill="#8d99a6"/>
+    <circle cx="0" cy="${SIGN_Y - 150}" r="32" fill="#fff" stroke="#d9302a" stroke-width="7"/>
+    <text x="0" y="${SIGN_Y - 140}" text-anchor="middle" font-size="28" font-weight="800" fill="#1d1d1d">20</text>
+    <rect x="-30" y="${SIGN_Y - 112}" width="60" height="18" rx="3" fill="#fff" stroke="#999"/><text x="0" y="${SIGN_Y - 99}" text-anchor="middle" font-size="11" font-weight="700" fill="#333">慢行 看海</text></g>`,
+];
+const signLoop = Loop(L.signs, 0.9, 2200, 260);
+let signIdx = 0;
+for (const x0 of [650, 1750]) signLoop.add(x0, (gr, it) => {
+  it.inner = g(gr); html(it.inner, signDefs[signIdx++ % signDefs.length]());
+}, it => { it.inner.innerHTML = ''; html(it.inner, signDefs[signIdx++ % signDefs.length]()); });
+
+/* ---------------- 道路 ---------------- */
+const ROAD_TOP = 646, ROAD_BOT = 812, LANE_Y = 722;
+el('rect', { x: -400, y: ROAD_TOP, width: 2400, height: ROAD_BOT - ROAD_TOP, fill: 'url(#gRoad)' }, L.road);
+const roadWet = el('rect', { x: -400, y: ROAD_TOP, width: 2400, height: ROAD_BOT - ROAD_TOP, fill: '#28313d', opacity: 0 }, L.road);
+el('rect', { x: -400, y: ROAD_TOP, width: 2400, height: 4, fill: '#8b8f93' }, L.road);
+el('rect', { x: -400, y: ROAD_TOP + 7, width: 2400, height: 3, fill: '#eef0f1', opacity: .85 }, L.road);
+// 非机动车道（绿色涂装）
+el('rect', { x: -400, y: LANE_Y + 4, width: 2400, height: ROAD_BOT - LANE_Y - 8, fill: '#3f8a5e', opacity: .38 }, L.road);
+el('rect', { x: -400, y: LANE_Y, width: 2400, height: 4, fill: '#f3f4f4', opacity: .9 }, L.road);
+// 沥青颗粒纹理（与路面同速）
+Tile(L.road, 400, 1.0, (gr) => {
+  let d = '';
+  for (let i = 0; i < 90; i++) { const x = srand(0, 400), y = srand(ROAD_TOP + 12, ROAD_BOT - 4); d += `M${f1(x)} ${f1(y)}h${f1(srand(1, 3))}`; }
+  el('path', { d, stroke: '#2f343a', 'stroke-width': 1.6, opacity: .5 }, gr);
+  let d2 = '';
+  for (let i = 0; i < 40; i++) { const x = srand(0, 400), y = srand(ROAD_TOP + 12, ROAD_BOT - 4); d2 += `M${f1(x)} ${f1(y)}h${f1(srand(1, 2))}`; }
+  el('path', { d: d2, stroke: '#8a9097', 'stroke-width': 1.4, opacity: .5 }, gr);
+});
+// 中心虚线（远一些，视差 0.94）
+Tile(L.road, 600, 0.94, (gr) => {
+  el('path', { d: `M0 ${ROAD_TOP + 34}h300`, stroke: '#f4f5f5', 'stroke-width': 4, opacity: .8 }, gr);
+});
+// 路面喷涂：自行车图标 + 文字、井盖
+Tile(L.road, 1800, 1.0, (gr) => {
+  html(gr, `<g transform="translate(300 ${LANE_Y + 50}) scale(1 .42)" opacity=".85" fill="none" stroke="#f6f7f7" stroke-width="5">
+      <circle cx="-30" cy="0" r="22"/><circle cx="30" cy="0" r="22"/><path d="M-30 0 L-8 -30 L20 -30 L30 0 M-8 -30 L2 0 L-30 0 M20 -30 l-4 -12 h10 M-12 -36 h14"/></g>
+    <text x="520" y="${LANE_Y + 62}" font-size="46" font-weight="800" fill="#f6f7f7" opacity=".75" transform="translate(520 ${LANE_Y + 62}) scale(1 .45) translate(-520 -${LANE_Y + 62})" letter-spacing="10">非机动车道</text>
+    <ellipse cx="1300" cy="${ROAD_TOP + 50}" rx="26" ry="7" fill="#3a3e44" stroke="#6e737a" stroke-width="2"/>
+    <path d="M1282 ${ROAD_TOP + 50}h36M1290 ${ROAD_TOP + 46}h20M1290 ${ROAD_TOP + 54}h20" stroke="#6e737a" stroke-width="1.2"/>
+    <path d="M1500 ${ROAD_TOP + 22} q20 6 34 2 q12 8 30 4" fill="none" stroke="#373b41" stroke-width="1.5"/>`);
+});
+// 水坑（雨天）
+const puddleTile = Tile(L.road, 1300, 1.0, (gr) => {
+  html(gr, `<ellipse cx="200" cy="${LANE_Y + 60}" rx="70" ry="9" fill="url(#gPuddle)" opacity=".55"/><ellipse cx="190" cy="${LANE_Y + 58}" rx="40" ry="3" fill="#dff0fb" opacity=".35"/>
+    <ellipse cx="820" cy="${ROAD_TOP + 44}" rx="95" ry="10" fill="url(#gPuddle)" opacity=".5"/><ellipse cx="800" cy="${ROAD_TOP + 42}" rx="50" ry="3" fill="#dff0fb" opacity=".35"/>
+    <ellipse cx="1150" cy="${LANE_Y + 30}" rx="50" ry="6" fill="url(#gPuddle)" opacity=".5"/>`);
+});
+puddleTile.g.style.opacity = 0;
+// 路缘 & 人行道
+el('rect', { x: -400, y: ROAD_BOT, width: 2400, height: 10, fill: '#d6d2ca' }, L.walk);
+el('rect', { x: -400, y: ROAD_BOT + 10, width: 2400, height: 4, fill: '#8f8a80' }, L.walk);
+const walkTile = Tile(L.walk, 360, 1.08, (gr) => {
+  el('rect', { x: 0, y: ROAD_BOT + 14, width: 360, height: 1400, fill: 'url(#pPaver)' }, gr);
+  el('path', { d: `M0 ${ROAD_BOT + 5}h360`, stroke: '#b9b4aa', 'stroke-width': 1, 'stroke-dasharray': '2 58' }, gr);
+});
+// 前景植物（视差 1.3，产生纵深）
+Tile(L.front, 900, 1.3, (gr) => {
+  let s = '';
+  for (let i = 0; i < 5; i++) {
+    const x = srand(0, 900), y = srand(880, 905), h = srand(30, 60);
+    s += `<g transform="translate(${f1(x)} ${f1(y)})">`;
+    for (let k = -3; k <= 3; k++) s += `<path d="M0 0 Q${k * 5} ${-h * .6} ${k * 9 + srand(-4, 4)} ${f1(-h - Math.abs(k) * -4)}" stroke="${k % 2 ? '#3f8b4c' : '#5aa55a'}" stroke-width="4" fill="none" stroke-linecap="round"/>`;
+    if (R1() < .6) s += `<circle cx="${f1(srand(-10, 10))}" cy="${f1(-h * .8)}" r="4" fill="${R1() < .5 ? '#f7d24a' : '#f28bb0'}"/><circle cx="${f1(srand(-14, 14))}" cy="${f1(-h * .6)}" r="3.5" fill="#fff4b0"/>`;
+    s += `</g>`;
+  }
+  s += `<ellipse cx="${f1(srand(100, 800))}" cy="915" rx="110" ry="40" fill="#3b7a45"/>`;
+  html(gr, `<g>${s}</g>`);
+});
+
+/* =====================================================================
+ *  自行车
+ * ===================================================================== */
+const rig = g(L.rig, { id: 'rig' });
+const shadow = el('ellipse', { cx: 758, cy: GROUND_Y + 2, rx: 250, ry: 13, fill: 'url(#gShadow)' }, L.shadow);
+const lay = {};
+['farWing', 'farLeg', 'wheels', 'fenders', 'frame', 'drive', 'crankNear', 'front', 'tail', 'body', 'nearLeg', 'neck', 'head', 'nearWing', 'fx']
+  .forEach(k => lay[k] = g(rig, { id: 'P_' + k }));
+const tip = (e, t) => { e.setAttribute('data-tip', t); return e; };
+
+// —— 车轮 ——
+function buildWheel(c, isRear) {
+  const w = g(lay.wheels, { transform: `translate(${c.x},${c.y})` });
+  tip(el('circle', { r: 96, fill: 'none', stroke: '#26272c', 'stroke-width': 8 }, w), '轮胎（700×35C 城市胎）');
+  el('circle', { r: 91.5, fill: 'none', stroke: '#c9a36b', 'stroke-width': 2.2 }, w);            // 黄边胎壁
+  const rim = tip(el('circle', { r: 88.5, fill: 'none', stroke: 'url(#gChrome)', 'stroke-width': 4.5 }, w), '轮圈（铝合金）');
+  el('circle', { r: 86, fill: 'none', stroke: '#7d8791', 'stroke-width': .8 }, w);
+  const spin = g(w);
+  // 32 根交叉编法辐条
+  let dA = '', dB = '';
+  for (let i = 0; i < 32; i++) {
+    const a = i / 32 * TAU, h = 8.5, sgn = i % 2 ? 1 : -1, b = a + sgn * .42;
+    const s = `M${f1(Math.cos(a) * h)} ${f1(Math.sin(a) * h)}L${f1(Math.cos(b) * 86)} ${f1(Math.sin(b) * 86)}`;
+    if (i % 2) dA += s; else dB += s;
+  }
+  const spokes = g(spin);
+  tip(el('path', { d: dB, stroke: '#8e98a2', 'stroke-width': 1.05 }, spokes), '辐条（32 根交叉编法）');
+  tip(el('path', { d: dA, stroke: '#dfe5ea', 'stroke-width': 1.15 }, spokes), '辐条（32 根交叉编法）');
+  // 胎纹（用于低速时看出转动）
+  el('circle', { r: 97.5, fill: 'none', stroke: '#3c3e44', 'stroke-width': 3, 'stroke-dasharray': '3 6.2' }, spin);
+  // 气门芯
+  const valve = g(spin, { transform: 'rotate(-90)' });
+  tip(html(valve, `<g><rect x="78" y="-2" width="10" height="4" rx="1" fill="#c9ced3"/><rect x="74" y="-1.5" width="5" height="3" fill="#2a2a2a"/></g>`), '气门芯');
+  // 反光片
+  el('rect', { x: 40, y: -3, width: 12, height: 6, rx: 1.5, fill: '#ffb100', stroke: '#b27100', 'stroke-width': .6, transform: 'rotate(40)' }, spokes);
+  const blur = el('circle', { r: 88, fill: 'url(#gSpokeBlur)', opacity: 0 }, w);
+  // 花鼓
+  tip(html(w, `<g><circle r="11" fill="#b8c1c9"/><circle r="11" fill="none" stroke="#7e8993" stroke-width="1.2"/><circle r="5" fill="#eef2f5"/><circle r="2.2" fill="#5d6770"/></g>`), isRear ? '后花鼓（棘轮，允许滑行时不踩）' : '前花鼓');
+  return { spin, spokes, blur, valve };
+}
+const wheelR = buildWheel(GEO.RW, true), wheelF = buildWheel(GEO.FW, false);
+
+// —— 挡泥板 ——
+function arcPath(c, r, a0, a1) {
+  const p0 = P(c.x + Math.cos(a0) * r, c.y + Math.sin(a0) * r), p1 = P(c.x + Math.cos(a1) * r, c.y + Math.sin(a1) * r);
+  const large = Math.abs(a1 - a0) > Math.PI ? 1 : 0, sweep = a1 > a0 ? 1 : 0;
+  return `M${f1(p0.x)} ${f1(p0.y)}A${r} ${r} 0 ${large} ${sweep} ${f1(p1.x)} ${f1(p1.y)}`;
+}
+const D2R = Math.PI / 180;
+tip(el('path', { d: arcPath(GEO.RW, 106, -62 * D2R, -190 * D2R), fill: 'none', stroke: 'url(#gFender)', 'stroke-width': 9, 'stroke-linecap': 'round' }, lay.fenders), '后挡泥板');
+el('path', { d: arcPath(GEO.RW, 109.5, -64 * D2R, -186 * D2R), fill: 'none', stroke: '#fff', 'stroke-width': 1.4, opacity: .8 }, lay.fenders);
+tip(el('path', { d: arcPath(GEO.FW, 106, -128 * D2R, -8 * D2R), fill: 'none', stroke: 'url(#gFender)', 'stroke-width': 9, 'stroke-linecap': 'round' }, lay.fenders), '前挡泥板');
+el('path', { d: arcPath(GEO.FW, 109.5, -124 * D2R, -12 * D2R), fill: 'none', stroke: '#fff', 'stroke-width': 1.4, opacity: .8 }, lay.fenders);
+// 挡泥板支杆
+el('path', { d: `M${GEO.RW.x} ${GEO.RW.y}L${f1(GEO.RW.x - 104)} ${f1(GEO.RW.y - 16)} M${GEO.FW.x} ${GEO.FW.y}L${f1(GEO.FW.x + 102)} ${f1(GEO.FW.y - 20)}`, stroke: '#aab3bb', 'stroke-width': 1.6 }, lay.fenders);
+// 尾灯（装在后挡泥板末端）
+const tailLight = tip(html(lay.fenders, `<g transform="translate(${GEO.TAIL.x} ${GEO.TAIL.y}) rotate(-80)">
+  <rect x="-7" y="-4" width="14" height="9" rx="3" fill="#6d1b14"/><rect x="-5.5" y="-2.6" width="11" height="6" rx="2" fill="#e8342a" class="tailLens"/></g>`), '尾灯（夜间闪烁，刹车变亮）');
+const tailLens = tailLight.querySelector('.tailLens');
+
+// —— 车架 ——
+const F = lay.frame;
+function tube(a, b, w, t, color) {
+  const grp = g(F);
+  el('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: '#9c3020', 'stroke-width': w + 1.6, 'stroke-linecap': 'round' }, grp);
+  el('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: color || '#e8553d', 'stroke-width': w, 'stroke-linecap': 'round' }, grp);
+  // 高光：沿垂直方向偏移
+  const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy), nx = dy / L, ny = -dx / L, o = w * .22;
+  const sgn = ny < 0 ? 1 : -1;
+  el('line', { x1: f1(a.x + nx * o * sgn + dx * .04), y1: f1(a.y + ny * o * sgn + dy * .04), x2: f1(b.x + nx * o * sgn - dx * .04), y2: f1(b.y + ny * o * sgn - dy * .04), stroke: '#ffb09c', 'stroke-width': w * .22, 'stroke-linecap': 'round', opacity: .8 }, grp);
+  if (t) tip(grp, t);
+  return grp;
+}
+const G_ = GEO;
+// 线管（刹车线、变速线）
+el('path', { d: `M836 507 C 824 520, 820 536, 806 544 L 690 543 C 670 546, 660 560, 652 584`, fill: 'none', stroke: '#2b2d33', 'stroke-width': 1.8 }, F);
+el('path', { d: `M846 508 C 872 520, 900 548, 905 576`, fill: 'none', stroke: '#2b2d33', 'stroke-width': 1.8 }, F);
+tube(P(677, 548), P(858, 549), 9, '上管');
+tube(P(722, 686), P(875, 580), 11.5, '下管');
+tube(G_.BB, G_.ST, 10, '立管');
+tube(P(675, 550), G_.RW, 6.5, '后上叉');
+tube(G_.BB, G_.RW, 7, '后下叉');
