@@ -73,11 +73,16 @@ svg.addEventListener('pointerup', endPtr); svg.addEventListener('pointercancel',
 svg.addEventListener('pointerleave', () => $('tip').classList.remove('show'));
 svg.addEventListener('dblclick', () => actions.view());
 // ===== 稳健性 =====
+let badWrites = 0;
 // 任何写进 SVG 属性的 NaN / Infinity 都会让 Chromium 把整组（例如骑手）算成无效包围盒而整帧不画 → 直接丢弃这类写入
 {
   const sa = Element.prototype.setAttribute, bad = /NaN|Infinity/;
-  Element.prototype.setAttribute = function (k, v) { if (typeof v === 'number' ? !isFinite(v) : bad.test(v)) return; return sa.call(this, k, v); };
+  Element.prototype.setAttribute = function (k, v) { if (typeof v === 'number' ? !isFinite(v) : bad.test(v)) { badWrites++; return; } return sa.call(this, k, v); };
 }
+// transform 未变化就不重写（减少整组失效重绘）
+setT = function (e, v) { if (e.__t !== v) { e.__t = v; e.setAttribute('transform', v); } };
+// 仅在值变化时写属性（数值按 0.01 量化）
+function setA(e, k, v) { if (typeof v === 'number') v = Math.round(v * 100) / 100; const c = '__' + k; if (e[c] !== v) { e[c] = v; e.setAttribute(k, v); } }
 // 精简渲染（?lite=1 强制开启，?lite=0 强制关闭；微信/XWEB 与触屏手机自动开启）：
 // 去掉所有 SVG 滤镜、mix-blend-mode、clip-path —— 这些在安卓 Chromium（高 DPR、GPU 光栅化）上最容易导致局部整组不绘制/闪烁
 const LITE = Q.get('lite') === '1' || (Q.get('lite') !== '0' && (/MicroMessenger|XWEB|MMWEBSDK/i.test(navigator.userAgent) ||
@@ -88,6 +93,8 @@ function applyLite() {
   svg.querySelectorAll('[clip-path]').forEach(e => e.removeAttribute('clip-path'));
   svg.querySelectorAll('[style]').forEach(e => { if (e.style.mixBlendMode) e.style.mixBlendMode = ''; if (e.style.filter) e.style.filter = ''; });
   headBeam.setAttribute('opacity', '.55'); pouchFishEl.style.opacity = '.55';
+  // 高速轮面：纯色半透明圆（不用渐变/滤镜/遮罩），中心留出花鼓
+  for (const w of [wheelR, wheelF]) { w.blur.setAttribute('fill', '#c3cad1'); w.blur.setAttribute('r', '86'); }
 }
 if (LITE) applyLite();
 // 透明度为 0 的特效层直接 display:none（视觉完全相同，但不参与绘制/合成）
@@ -99,6 +106,9 @@ function hideIdle() {
   }
 }
 // 状态自检：任何物理/动画量变成非有限数时复位（防止弹簧/IK 在异常帧间隔后发散）
+// ?maxspeed=10（km/h）：限制目标车速，便于 A/B 测试
+const VMAX = Q.get('maxspeed') ? Math.max(0, +Q.get('maxspeed')) / 3.6 || Infinity : Infinity;
+if (S.v > VMAX) S.v = VMAX;
 function sanitizeState() {
   const keys = ['v', 'crank', 'crankW', 'wheelR', 'wheelF', 'cogAng', 'chainPos', 'scroll', 'dist', 'cogR', 'lean', 'bob', 'accel', 'mouth', 'pouchD', 'pouchV', 'leanDraw', 'headAngDeg', 'headAng', 'prevAccel'];
   let bad = false;
@@ -198,7 +208,7 @@ function physics(dt) {
   const cogT = CASSETTE[S.gear] * TOOTH_R;
   if (Math.abs(S.cogR - cogT) > .03) { S.cogR = Math.abs(S.cogR - cogT) < .1 ? cogT : smooth(S.cogR, cogT, 16, dt); rebuildChain(); }
   const r = CR_R / S.cogR;                          // 实时齿比（换挡过程中平滑过渡）
-  const vT = S.targetCad / 60 * (CHAINRING / CASSETTE[S.gear]) * WHEEL_C;
+  const vT = Math.min(VMAX, S.targetCad / 60 * (CHAINRING / CASSETTE[S.gear]) * WHEEL_C);
   let a = 0;
   if (S.braking) {
     a = S.v > .01 ? -(S.rainT > .5 ? 3.8 : 5.5) : 0;
@@ -235,10 +245,13 @@ function physics(dt) {
   S.cogAng += (S.pedaling ? wWheel : S.crankW * r) * dt;
   S.scroll += S.v * PX_PER_M * dt;
   S.dist += S.v * dt;
+  // 累积角度/相位按周期回绕，避免写入越来越大的 rotate / dashoffset
+  S.crank = mod(S.crank, TAU); S.wheelF = mod(S.wheelF, TAU); S.wheelR = mod(S.wheelR, TAU); S.cogAng = mod(S.cogAng, TAU);
+  if (chainPitch > 0) S.chainPos = mod(S.chainPos, chainPitch);
   // 刹车痕
   if (S.skidding) {
     const cx = S.scroll + GEO.RW.x;
-    if (!skidCur) { skidCur = { a: cx, b: cx, e: skidEl() }; skids.push(skidCur); }
+    if (!skidCur) { skidCur = { a: cx, b: cx, e: skidEl() }; skids.push(skidCur); while (skids.length > 12) skids.shift().e.remove(); }
     skidCur.b = cx;
   } else skidCur = null;
   for (let i = skids.length - 1; i >= 0; i--) {
@@ -252,6 +265,7 @@ function physics(dt) {
  *  每帧渲染
  * ===================================================================== */
 const deg = r => r * 180 / Math.PI;
+let spokeMode = 'spokes', spokeBlend = 0;
 function bodyXf(p) { return add(rot(p, PIVOT, S.leanDraw * D2R), P(0, S.bob)); }
 function render(dt, rdt) {
   const t = S.t;
@@ -301,3 +315,17 @@ function render(dt, rdt) {
     const fl = Math.sin(gl.ph), w = 16;
     gl.p.setAttribute('d', `M${-w} ${f1(-fl * 8 - 2)} Q${-w / 2} ${f1(-fl * 10 - 7)} 0 0 Q${w / 2} ${f1(-fl * 10 - 7)} ${w} ${f1(-fl * 8 - 2)}`);
     setT(gl.g, `translate(${f1(gl.x)},${f1(gl.y + Math.sin(gl.ph * .2) * 6)}) scale(${gl.vx < 0 ? gl.s : -gl.s},${gl.s})`);
+  }
+  // 帆船
+  for (const b of boats) {
+    b.x -= (S.v * PX_PER_M * .1 + b.sp * (1 + WD)) * dt;
+    if (b.x < -120) b.x = 1750;
+    setT(b.g, `translate(${f1(b.x)},${f1(b.y + Math.sin(t * 1.4 + b.ph) * 1.5)})`);
+    setT(b.inner, `rotate(${f1(Math.sin(t * 1.1 + b.ph) * (2 + WD * 5))})`);
+  }
+  // 棕榈摇曳
+  for (const p of palms) setT(p.fr, `rotate(${f1(Math.sin(t * (1.2 + WD) + p.ph) * (2 + WD * 7) - WD * 6)})`);
+  // 螃蟹横着走
+  for (const c of crabs) {
+    c.ph += dt * 7; c.ox += c.dir * 22 * dt; if (Math.abs(c.ox) > 60) c.dir *= -1;
+    setT(c.crab.c, `translate(${f1(c.ox)},${f1(c.y)})`);

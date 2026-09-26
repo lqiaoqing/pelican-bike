@@ -1,17 +1,3 @@
-  }
-  // 帆船
-  for (const b of boats) {
-    b.x -= (S.v * PX_PER_M * .1 + b.sp * (1 + WD)) * dt;
-    if (b.x < -120) b.x = 1750;
-    setT(b.g, `translate(${f1(b.x)},${f1(b.y + Math.sin(t * 1.4 + b.ph) * 1.5)})`);
-    setT(b.inner, `rotate(${f1(Math.sin(t * 1.1 + b.ph) * (2 + WD * 5))})`);
-  }
-  // 棕榈摇曳
-  for (const p of palms) setT(p.fr, `rotate(${f1(Math.sin(t * (1.2 + WD) + p.ph) * (2 + WD * 7) - WD * 6)})`);
-  // 螃蟹横着走
-  for (const c of crabs) {
-    c.ph += dt * 7; c.ox += c.dir * 22 * dt; if (Math.abs(c.ox) > 60) c.dir *= -1;
-    setT(c.crab.c, `translate(${f1(c.ox)},${f1(c.y)})`);
     c.crab.legs.forEach((lg, i) => {
       const side = i < 3 ? -1 : 1, k = i % 3, sw = Math.sin(c.ph + k * 2 + (side > 0 ? 1 : 0)) * 3;
       lg.setAttribute('d', `M${side * 7} ${-2 + k * 1.5} q${side * 7} ${-6 + sw} ${side * (12 + k * 1.5)} ${4 + k}`);
@@ -64,9 +50,14 @@
   // 车轮
   setT(wheelR.spin, `rotate(${f1(deg(S.wheelR) % 360)})`);
   setT(wheelF.spin, `rotate(${f1(deg(S.wheelF) % 360)})`);
-  const spokeOp = clamp(1.25 - wWheel / 28, .18, 1), blurOp = clamp((wWheel - 8) / 22, 0, .9);
-  wheelR.spokes.setAttribute('opacity', S.skidding ? 1 : spokeOp); wheelF.spokes.setAttribute('opacity', spokeOp);
-  wheelR.blur.setAttribute('opacity', S.skidding ? 0 : blurOp); wheelF.blur.setAttribute('opacity', blurOp);
+  let spokeOp, blurOp;
+  if (LITE) {   // 带滞回的交叉淡入：>14 rad/s 进入“轮面”模式，<11 rad/s 退回辐条，避免阈值附近逐帧来回切换
+    if (spokeMode === 'spokes' && wWheel > 14) spokeMode = 'disc'; else if (spokeMode === 'disc' && wWheel < 11) spokeMode = 'spokes';
+    spokeBlend = smooth(spokeBlend, spokeMode === 'disc' ? 1 : 0, 4, rdt);
+    spokeOp = 1 - .6 * spokeBlend; blurOp = .42 * spokeBlend;
+  } else { spokeOp = clamp(1.25 - wWheel / 28, .18, 1); blurOp = clamp((wWheel - 8) / 22, 0, .9); spokeMode = blurOp > 0 ? 'disc' : 'spokes'; }
+  setA(wheelR.spokes, 'opacity', S.skidding ? 1 : spokeOp); setA(wheelF.spokes, 'opacity', spokeOp);
+  setA(wheelR.blur, 'opacity', S.skidding ? 0 : blurOp); setA(wheelF.blur, 'opacity', blurOp);
   // 传动
   setT(chainring, `translate(${GEO.BB.x},${GEO.BB.y}) rotate(${f1(deg(S.crank) % 360)})`);
   setT(cassette, `translate(${GEO.RW.x},${GEO.RW.y}) rotate(${f1(deg(S.cogAng) % 360)})`);
@@ -108,8 +99,10 @@
   if (S.nextBlink < 0) { S.blink = 1; S.nextBlink = rand(2.2, 5.5); if (Math.random() < .2) S.nextBlink = .25; }
   S.blink = Math.max(0, S.blink - rdt * 7);
   const lidK = Math.sin(S.blink * Math.PI);
-  lid.setAttribute('transform', `translate(11 -5) scale(1 ${lidK.toFixed(3)}) translate(-11 5)`);
-  lidLine.setAttribute('opacity', lidK > .8 ? 1 : 0);
+  // 眼睑：闭合量很小时直接隐藏，不写 scale(1 0) 这种奇异矩阵
+  const lidShow = lidK > .02 ? '' : 'none'; if (lid.style.display !== lidShow) lid.style.display = lidShow;
+  if (lidShow === '') setT(lid, `translate(11 -5) scale(1 ${lidK.toFixed(2)}) translate(-11 5)`);
+  setA(lidLine, 'opacity', lidK > .8 ? 1 : 0);
   // 张嘴 & 喉囊弹簧
   S.mouth = smooth(S.mouth, S.mouthTarget, 10, dt);
   const accelKick = -(S.accel - (S.prevAccel || 0));
@@ -133,7 +126,8 @@
     if (dripAcc > 1) { dripAcc = 0; const d = drips.find(d => d.life <= 0); if (d) { const bt = billTip(); d.x = bt.x + 4; d.y = bt.y + 4; d.vy = 0; d.life = 1; } }
   }
   for (const d of drips) {
-    if (d.life <= 0) { d.e.setAttribute('opacity', 0); continue; }
+    if (d.life <= 0) { if (d.e.style.display !== 'none') { d.e.setAttribute('opacity', 0); d.e.style.display = 'none'; } continue; }   // 隐藏的水滴不计入骑手包围盒
+    if (d.e.style.display) d.e.style.display = '';
     d.vy += 900 * dt; d.y += d.vy * dt; d.x -= S.v * PX_PER_M * .05 * dt; d.life -= dt * 1.6;
     d.e.setAttribute('cx', f1(d.x)); d.e.setAttribute('cy', f1(d.y)); d.e.setAttribute('opacity', f1(Math.max(0, d.life) * 90) / 100);
   }
@@ -266,9 +260,33 @@ let last = performance.now();
 const brakeAt = Q.get('brake') ? +Q.get('brake') : -1;
 let catchAt = Q.get('catch') ? +Q.get('catch') : -1, pokeAt = Q.get('poke') ? +Q.get('poke') : -1;   // 仅用于截图/演示的 URL 参数
 let frameErr = 0;
+// ?debug=1：左上角调试浮层（fps、dt、车速、骑手包围盒、DOM 节点数、精简模式、轮面模式、被拦截的非有限值写入）
+const DEBUG = Q.get('debug') === '1';
+let dbgEl = null, dbgN = 0, dbgT0 = 0, dbgRaw = 0, dbgMaxDt = 0;
+if (DEBUG) {
+  dbgEl = document.createElement('div'); dbgEl.id = 'dbg';
+  dbgEl.style.cssText = 'position:fixed;left:6px;top:calc(env(safe-area-inset-top,0px) + 92px);z-index:30;pointer-events:none;font:11px/1.35 ui-monospace,Menlo,Consolas,monospace;color:#0f0;background:rgba(0,0,0,.72);padding:4px 6px;border-radius:6px;white-space:pre';
+  document.body.appendChild(dbgEl);
+}
+function debugTick(now, rawMs) {
+  dbgN++; dbgRaw = rawMs; dbgMaxDt = Math.max(dbgMaxDt, rawMs);
+  if (!dbgT0) dbgT0 = now;
+  if (now - dbgT0 < 250) return;
+  const fps = dbgN * 1000 / (now - dbgT0); dbgN = 0; dbgT0 = now;
+  let bw = -1, sr = null; try { bw = rig.getBBox().width; sr = rig.getBoundingClientRect(); } catch (e) { }
+  const cs = getComputedStyle(rig);
+  dbgEl.textContent = `fps ${fps.toFixed(0)}  dt ${dbgRaw.toFixed(1)}ms (max ${dbgMaxDt.toFixed(0)})\n` +
+    `t ${S.t.toFixed(1)}s  v ${(S.v * 3.6).toFixed(1)}km/h${VMAX < Infinity ? ' (cap ' + (VMAX * 3.6).toFixed(0) + ')' : ''}\n` +
+    `rider bbox w ${bw.toFixed(0)}  scr ${sr ? sr.width.toFixed(0) + 'x' + sr.height.toFixed(0) + '@' + sr.left.toFixed(0) + ',' + sr.top.toFixed(0) : '-'}\n` +
+    `rig ${cs.display}/${cs.visibility}/${cs.opacity}  nodes ${document.getElementsByTagName('*').length}\n` +
+    `lite ${LITE ? 'on' : 'off'}  spokes ${spokeMode} ${spokeBlend.toFixed(2)}  bad ${badWrites}  err ${frameErr}\n` +
+    `vp ${innerWidth}x${innerHeight} dpr ${devicePixelRatio}`;
+  dbgMaxDt = 0;
+}
 function frame(now) {
   requestAnimationFrame(frame);   // 先排下一帧：即使本帧出错动画也不会停
   let rdt = (now - last) / 1000; last = now;
+  if (DEBUG) debugTick(now, rdt * 1000);
   rdt = isFinite(rdt) ? Math.min(.05, Math.max(0, rdt)) : 0;   // 后台/节流/时间戳回退时限制步长
   try { step(S.paused ? 0 : rdt * (S.slow ? .25 : 1), rdt); }
   catch (e) { if (!frameErr++) console.warn('frame skipped:', e && e.message); sanitizeState(); }
