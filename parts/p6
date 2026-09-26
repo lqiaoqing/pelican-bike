@@ -1,0 +1,256 @@
+  fish() { autoCatch(); },
+  poke() { pokePelican(); },
+  view() { S.zoom = 1; S.tx = 0; S.ty = 0; applyCam(); },
+  bell() { ringBell(); },
+};
+$('btnPlay').onclick = actions.play; $('btnSlow').onclick = actions.slow; $('btnSound').onclick = actions.sound;
+$('btnNight').onclick = actions.night; $('btnRain').onclick = actions.rain; $('btnWind').onclick = actions.wind;
+$('btnLabels').onclick = actions.labels; $('btnFish').onclick = actions.fish; $('btnPoke').onclick = actions.poke;
+$('btnView').onclick = actions.view; $('btnBell').onclick = actions.bell;
+$('gDown').onclick = () => setGear(S.gear - 1); $('gUp').onclick = () => setGear(S.gear + 1);
+$('cad').oninput = e => setCad(+e.target.value);
+const brakeBtn = $('btnBrake');
+const brakeOn = e => { e.preventDefault(); S.brakeBtn = true; brakeBtn.classList.add('on'); audio(); };
+const brakeOff = () => { S.brakeBtn = false; brakeBtn.classList.remove('on'); };
+brakeBtn.addEventListener('pointerdown', brakeOn); ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => brakeBtn.addEventListener(ev, brakeOff));
+$('btnFold').onclick = () => { const p = $('panel'); p.classList.toggle('collapsed'); $('btnFold').textContent = p.classList.contains('collapsed') ? '+' : '–'; };
+$('btnHelp').onclick = () => $('help').classList.toggle('show');
+bell.addEventListener('click', e => { e.stopPropagation(); if (!dragMoved) ringBell(); });
+[lay.body, lay.neck, lay.head, lay.tail, lay.nearWing, lay.farWing].forEach(x => { x.classList.add('clickable'); x.addEventListener('click', e => { if (!dragMoved) { e.stopPropagation(); pokePelican(); } }); });
+
+// 键盘
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' && e.key !== ' ' && e.key.length > 1 && !/Arrow/.test(e.key)) return;
+  const k = e.key.toLowerCase();
+  audio();
+  if (k === ' ' || e.code === 'Space') { S.brakeKey = true; brakeBtn.classList.add('on'); e.preventDefault(); return; }
+  if (k === 'arrowup' || k === 'w') { setCad(S.targetCad + 5); e.preventDefault(); }
+  else if (k === 'arrowdown' || k === 's') { setCad(S.targetCad - 5); e.preventDefault(); }
+  else if (e.repeat) return;
+  else if (k === 'q') setGear(S.gear - 1);
+  else if (k === 'e') setGear(S.gear + 1);
+  else if (k === 'b') ringBell();
+  else if (k === 'n') actions.night();
+  else if (k === 'r') actions.rain();
+  else if (k === 'g') actions.wind();
+  else if (k === 'l') actions.labels();
+  else if (k === 'm') actions.slow();
+  else if (k === 'p' || k === 'enter') actions.play();
+  else if (k === 'f') actions.fish();
+  else if (k === 'c') actions.poke();
+  else if (k === 'h' || k === '?') $('help').classList.toggle('show');
+  else if (k === '+' || k === '=') zoomAt(1.2, 800, 520);
+  else if (k === '-' || k === '_') zoomAt(1 / 1.2, 800, 520);
+  else if (k === '0') actions.view();
+  else if (k === 'escape') $('help').classList.remove('show');
+});
+addEventListener('keyup', e => { if (e.key === ' ' || e.code === 'Space') { S.brakeKey = false; if (!S.brakeBtn) brakeBtn.classList.remove('on'); } });
+addEventListener('blur', () => { S.brakeKey = false; brakeOff(); });
+
+// 视角：滚轮缩放 / 拖拽平移 / 双指缩放
+function svgPt(cx, cy) { const p = svg.createSVGPoint(); p.x = cx; p.y = cy; return p.matrixTransform(svg.getScreenCTM().inverse()); }
+function applyCam() {
+  S.zoom = clamp(S.zoom, 1, 3.2);
+  S.tx = clamp(S.tx, 1600 * (1 - S.zoom), 0); S.ty = clamp(S.ty, 900 * (1 - S.zoom), 0);
+  setT(cam, `translate(${f1(S.tx)},${f1(S.ty)}) scale(${S.zoom.toFixed(4)})`);
+}
+function zoomAt(k, x, y) { const z0 = S.zoom, z1 = clamp(z0 * k, 1, 3.2); S.tx = x - (x - S.tx) * z1 / z0; S.ty = y - (y - S.ty) * z1 / z0; S.zoom = z1; applyCam(); }
+svg.addEventListener('wheel', e => { e.preventDefault(); const p = svgPt(e.clientX, e.clientY); zoomAt(Math.exp(-e.deltaY * .0015), p.x, p.y); }, { passive: false });
+const ptrs = new Map(); let dragMoved = false, pinch0 = 0, down0 = null;
+svg.addEventListener('pointerdown', e => { ptrs.set(e.pointerId, P(e.clientX, e.clientY)); dragMoved = false; down0 = P(e.clientX, e.clientY); if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); } audio(); });
+svg.addEventListener('pointermove', e => {
+  const tipEl = $('tip'), t = e.target.closest && e.target.closest('[data-tip]');
+  if (t && !ptrs.size) { tipEl.innerHTML = '<b>●</b>' + t.getAttribute('data-tip'); tipEl.style.left = e.clientX + 'px'; tipEl.style.top = e.clientY + 'px'; tipEl.classList.add('show'); }
+  else tipEl.classList.remove('show');
+  if (!ptrs.has(e.pointerId)) return;
+  const prev = ptrs.get(e.pointerId), cur2 = P(e.clientX, e.clientY);
+  if (Math.hypot(cur2.x - down0.x, cur2.y - down0.y) > 6) dragMoved = true;
+  ptrs.set(e.pointerId, cur2);
+  if (ptrs.size === 2) {
+    const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y);
+    if (pinch0 > 0) { const m = svgPt((a.x + b.x) / 2, (a.y + b.y) / 2); zoomAt(d / pinch0, m.x, m.y); }
+    pinch0 = d;
+  } else if (dragMoved && S.zoom > 1) {
+    const k = 1 / svg.getScreenCTM().a; S.tx += (cur2.x - prev.x) * k; S.ty += (cur2.y - prev.y) * k; applyCam();
+  }
+});
+const endPtr = e => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch0 = 0; };
+svg.addEventListener('pointerup', endPtr); svg.addEventListener('pointercancel', endPtr);
+svg.addEventListener('pointerleave', () => $('tip').classList.remove('show'));
+svg.addEventListener('dblclick', () => actions.view());
+// 竖屏：把视口收窄到以骑手为中心的区域（上下由延展的天空/人行道填满）
+function fitAspect() {
+  const asp = innerWidth / innerHeight;
+  if (asp < 1.25) { const w = asp < .8 ? 820 : 1200, h = w / asp; svg.setAttribute('viewBox', `${f1(760 - w / 2)} ${f1(560 - h / 2)} ${w} ${f1(h)}`); svg.setAttribute('preserveAspectRatio', 'xMidYMid meet'); }
+  else { svg.setAttribute('viewBox', '0 0 1600 900'); svg.setAttribute('preserveAspectRatio', 'xMidYMid slice'); }
+}
+addEventListener('resize', fitAspect); fitAspect();
+
+/* =====================================================================
+ *  物理
+ * ===================================================================== */
+let skidCur = null;
+function physics(dt) {
+  S.braking = S.brakeKey || S.brakeBtn;
+  const cogT = CASSETTE[S.gear] * TOOTH_R;
+  if (Math.abs(S.cogR - cogT) > .03) { S.cogR = Math.abs(S.cogR - cogT) < .1 ? cogT : smooth(S.cogR, cogT, 16, dt); rebuildChain(); }
+  const r = CR_R / S.cogR;                          // 实时齿比（换挡过程中平滑过渡）
+  const vT = S.targetCad / 60 * (CHAINRING / CASSETTE[S.gear]) * WHEEL_C;
+  let a = 0;
+  if (S.braking) {
+    a = S.v > .01 ? -(S.rainT > .5 ? 3.8 : 5.5) : 0;
+    S.pedaling = false;
+    const sk = S.v > 3 ;
+    if (sk && !S.skidding) sfx.skid();
+    S.skidding = sk;
+  } else {
+    S.skidding = false;
+    const headwind = S.windT * .35;
+    if (S.v < vT - .03) { S.pedaling = true; a = Math.min(2.6 / (CHAINRING / CASSETTE[S.gear]) * (1 - .35 * S.windT), (vT - S.v) * 2.5 + .25); }
+    else if (S.v > vT + .3) { S.pedaling = false; a = -(.1 + .005 * S.v * S.v + headwind); }
+    else { S.pedaling = vT > .05; a = (vT - S.v) * 2.5; }
+  }
+  S.v = Math.max(0, S.v + a * dt);
+  S.accel = smooth(S.accel, S.v > .01 || a > 0 ? a : 0, 5, dt);
+  // 曲柄：踩踏时由链条严格耦合；滑行时棘轮脱开，曲柄减速并停在水平位
+  const wCouple = (S.v * PX_PER_M / WR) / r;       // 车轮角速度 / 齿比
+  if (S.pedaling) {
+    if (S.crankW < wCouple - .05) S.crankW = Math.min(wCouple, S.crankW + 18 * dt);   // 追上后棘轮啮合
+    else S.crankW = wCouple;
+  } else {
+    S.crankW = smooth(S.crankW, 0, 2.2, dt);
+    if (S.crankW < 1.2) {                            // 停到最近的水平位置（只向前转）
+      const target = Math.ceil(S.crank / Math.PI - .02) * Math.PI;
+      S.crankW = Math.min(S.crankW, Math.max(0, (target - S.crank) * 4));
+    }
+  }
+  S.crank += S.crankW * dt;
+  const wWheel = S.v * PX_PER_M / WR;
+  S.wheelF += wWheel * dt;
+  if (!S.skidding) S.wheelR += wWheel * dt;
+  S.chainPos += S.crankW * CR_R * dt;
+  S.cogAng += (S.pedaling ? wWheel : S.crankW * r) * dt;
+  S.scroll += S.v * PX_PER_M * dt;
+  S.dist += S.v * dt;
+  // 刹车痕
+  if (S.skidding) {
+    const cx = S.scroll + GEO.RW.x;
+    if (!skidCur) { skidCur = { a: cx, b: cx, e: skidEl() }; skids.push(skidCur); }
+    skidCur.b = cx;
+  } else skidCur = null;
+  for (let i = skids.length - 1; i >= 0; i--) {
+    const s = skids[i], x0 = s.a - S.scroll, x1 = s.b - S.scroll;
+    if (x1 < -200) { s.e.remove(); skids.splice(i, 1); continue; }
+    s.e.setAttribute('x', f1(x0 - 4)); s.e.setAttribute('width', f1(Math.max(4, x1 - x0 + 8))); s.e.setAttribute('y', GROUND_Y - 3);
+  }
+}
+
+/* =====================================================================
+ *  每帧渲染
+ * ===================================================================== */
+const deg = r => r * 180 / Math.PI;
+function bodyXf(p) { return add(rot(p, PIVOT, S.leanDraw * D2R), P(0, S.bob)); }
+function render(dt, rdt) {
+  const t = S.t;
+  const wWheel = S.v * PX_PER_M / WR;
+  const apparent = S.v + S.windT * 9;                       // 相对风速 (m/s)
+  const flutter = clamp((apparent - 3) / 10, 0, 1.3);
+  // 环境过渡
+  S.nightT = smooth(S.nightT, S.night ? 1 : 0, 1.8, rdt);
+  S.rainT = smooth(S.rainT, S.rain ? 1 : 0, 1.5, rdt);
+  S.windT = smooth(S.windT, S.wind ? 1 : 0, 1.5, rdt);
+  const N = S.nightT, RN = S.rainT, WD = S.windT;
+  skyNight.setAttribute('opacity', f1(N * 100) / 100);
+  skyStorm.setAttribute('opacity', f1(RN * .55 * (1 - N * .5) * 100) / 100);
+  seaStorm.setAttribute('opacity', f1(RN * .45 * 100) / 100);
+  L.stars.style.opacity = N;
+  sun.style.opacity = (1 - N) * (1 - RN * .9); setT(sun, `translate(${SUN_X},${f1(150 + N * 260)})`);
+  stormClouds.setAttribute('opacity', f1(RN * 100) / 100);
+  for (let i = 0; i < 7; i++) clouds[i].g.style.opacity = 1 - RN * .6;
+  setT(sunRays, `rotate(${f1(t * 4)})`);
+  nightShade.setAttribute('opacity', f1(N * 100) / 100);
+  stormShade.setAttribute('opacity', f1(RN * .32 * 100) / 100);
+  L.lights.style.opacity = N;
+  roadWet.setAttribute('opacity', f1(RN * .35 * 100) / 100);
+  puddleTile.g.style.opacity = RN;
+  L.rainL.style.opacity = RN; L.leaves.style.opacity = WD;
+  glitter.style.opacity = (1 - RN * .8);
+  wetSheen.setAttribute('opacity', f1(RN * 100) / 100);
+  if (Math.random() < .3) for (const s of stars) if (Math.random() < .05) s.e.setAttribute('opacity', f1(.4 + .6 * Math.abs(Math.sin(t * s.sp + s.ph)) * 10) / 10);
+  for (const gl of glints) if (Math.random() < .08) gl.setAttribute('opacity', (Math.random() * .8).toFixed(2));
+
+  // 视差滚动
+  for (const w of waveRows) w.drift += w.speed * (1 + WD * 2) * dt;
+  foam.drift = Math.sin(t * .8) * 20;
+  setT(foamG, `translate(${f1(-100 - mod(S.scroll * .45, 400))},${f1(Math.sin(t * .9) * 2.5)})`);
+  updateScrollers(S.scroll);
+  setT(foamG, `translate(${f1(-100 - mod(S.scroll * .45 + Math.sin(t * .8) * 20, 400))},${f1(Math.sin(t * .9) * 2.5)})`);
+  // 云
+  for (const c of clouds) {
+    c.x -= (c.sp * (1 + WD * 4) + S.v * PX_PER_M * .012) * dt;
+    if (c.x < -300) { c.x = 1900; c.y = rand(40, 300); }
+    setT(c.g, `translate(${f1(c.x)},${f1(c.y)}) scale(${c.s})`);
+  }
+  // 海鸥
+  for (const gl of gulls) {
+    gl.x += (gl.vx * (gl.vx < 0 ? 1 + WD : 1 - WD * .5) - S.v * PX_PER_M * .05) * dt; gl.ph += dt * gl.fr;
+    if (gl.x < -100) { gl.x = 1750; gl.y = rand(80, 330); } if (gl.x > 1800) gl.x = -80;
+    const fl = Math.sin(gl.ph), w = 16;
+    gl.p.setAttribute('d', `M${-w} ${f1(-fl * 8 - 2)} Q${-w / 2} ${f1(-fl * 10 - 7)} 0 0 Q${w / 2} ${f1(-fl * 10 - 7)} ${w} ${f1(-fl * 8 - 2)}`);
+    setT(gl.g, `translate(${f1(gl.x)},${f1(gl.y + Math.sin(gl.ph * .2) * 6)}) scale(${gl.vx < 0 ? gl.s : -gl.s},${gl.s})`);
+  }
+  // 帆船
+  for (const b of boats) {
+    b.x -= (S.v * PX_PER_M * .1 + b.sp * (1 + WD)) * dt;
+    if (b.x < -120) b.x = 1750;
+    setT(b.g, `translate(${f1(b.x)},${f1(b.y + Math.sin(t * 1.4 + b.ph) * 1.5)})`);
+    setT(b.inner, `rotate(${f1(Math.sin(t * 1.1 + b.ph) * (2 + WD * 5))})`);
+  }
+  // 棕榈摇曳
+  for (const p of palms) setT(p.fr, `rotate(${f1(Math.sin(t * (1.2 + WD) + p.ph) * (2 + WD * 7) - WD * 6)})`);
+  // 螃蟹横着走
+  for (const c of crabs) {
+    c.ph += dt * 7; c.ox += c.dir * 22 * dt; if (Math.abs(c.ox) > 60) c.dir *= -1;
+    setT(c.crab.c, `translate(${f1(c.ox)},${f1(c.y)})`);
+    c.crab.legs.forEach((lg, i) => {
+      const side = i < 3 ? -1 : 1, k = i % 3, sw = Math.sin(c.ph + k * 2 + (side > 0 ? 1 : 0)) * 3;
+      lg.setAttribute('d', `M${side * 7} ${-2 + k * 1.5} q${side * 7} ${-6 + sw} ${side * (12 + k * 1.5)} ${4 + k}`);
+    });
+  }
+  // 灯塔光束（伪 3D：旋转光束投影成左右伸缩的光柱）
+  const hl = headland.items[0];
+  const lx = hl.sx + 20, ly = HORIZON - 62 - 87;
+  setT(lhLight, `translate(${f1(lx)},${f1(ly)})`);
+  const ph = t * 1.3, c = Math.cos(ph), len = 900 * Math.abs(c) + 40, dir = c > 0 ? 1 : -1, spread = 14 + 30 * (1 - Math.abs(c));
+  lhBeam.setAttribute('d', `M0 -3 L${f1(dir * len)} ${f1(-spread)} L${f1(dir * len)} ${f1(spread)} L0 3Z`);
+  lhBeam.setAttribute('opacity', f1((.35 + .65 * Math.abs(Math.sin(ph))) * 100) / 100);
+  lampGlows.forEach((gl, i) => setT(gl, `translate(${f1(lamps[i].sx)},0)`));
+
+  // —— 鱼 ——
+  nextJump -= dt;
+  if (nextJump < 0) { const f = fishes.find(f => f.state === 'idle'); if (f) launchFish(f); nextJump = rand(1.8, 4.2); }
+  for (const f of fishes) {
+    if (f.state !== 'jump') continue;
+    f.t += dt / f.dur; f.x += (f.vx - S.v * PX_PER_M * .18) * dt;
+    const tt = f.t, y = f.y0 - 4 * f.h * tt * (1 - tt), vy = -4 * f.h * (1 - 2 * tt) / f.dur;
+    f.pos = P(f.x, y);
+    const ang = deg(Math.atan2(vy, f.vx));
+    setT(f.g, `translate(${f1(f.x)},${f1(y)})`);
+    setT(f.inner, `rotate(${f1(f.dir > 0 ? ang : ang + 180)}) scale(${f.sc * (f.dir > 0 ? 1 : -1)},${f.sc})`);
+    if (tt >= 1) { f.state = 'idle'; f.g.style.display = 'none'; ripple(f.x, f.y0, f.sc); sfx.splash(.3); }
+  }
+  for (const r of ripples) {
+    if (r.life <= 0) { r.e.setAttribute('opacity', 0); continue; }
+    r.life -= dt * 1.1; r.x -= S.v * PX_PER_M * .18 * dt;
+    const k = 1 - r.life;
+    r.e.setAttribute('cx', f1(r.x)); r.e.setAttribute('cy', f1(r.y)); r.e.setAttribute('rx', f1((6 + k * 30) * r.s)); r.e.setAttribute('ry', f1((2 + k * 7) * r.s));
+    r.e.setAttribute('opacity', f1(Math.max(0, r.life) * 100) / 100);
+  }
+
+  // —— 骑手姿态 ——
+  const cad = S.crankW * 60 / TAU;
+  const effort = S.pedaling ? clamp(cad / 70, 0, 1.4) : 0;
+  const leanT = clamp(-S.accel * 1.1, -3, 6) + (S.braking && S.v > .2 ? 3 : 0) + WD * 2 + effort * .8;
+  S.lean = smooth(S.lean, leanT, 5, dt);
+  S.bob = Math.cos(2 * S.crank) * 1.6 * effort;
+  const lean = S.lean + Math.sin(S.crank) * .5 * effort;   // 随踏板轻微左右（俯视）→ 侧视表现为前后微晃
