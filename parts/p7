@@ -1,3 +1,35 @@
+  lhBeam.setAttribute('d', `M0 -3 L${f1(dir * len)} ${f1(-spread)} L${f1(dir * len)} ${f1(spread)} L0 3Z`);
+  lhBeam.setAttribute('opacity', f1((.35 + .65 * Math.abs(Math.sin(ph))) * 100) / 100);
+  lampGlows.forEach((gl, i) => setT(gl, `translate(${f1(lamps[i].sx)},0)`));
+
+  // —— 鱼 ——
+  nextJump -= dt;
+  if (nextJump < 0) { const f = fishes.find(f => f.state === 'idle'); if (f) launchFish(f); nextJump = rand(1.8, 4.2); }
+  for (const f of fishes) {
+    if (f.state !== 'jump') continue;
+    f.t += dt / f.dur; f.x += (f.vx - S.v * PX_PER_M * .18) * dt;
+    const tt = f.t, y = f.y0 - 4 * f.h * tt * (1 - tt), vy = -4 * f.h * (1 - 2 * tt) / f.dur;
+    f.pos = P(f.x, y);
+    const ang = deg(Math.atan2(vy, f.vx));
+    setT(f.g, `translate(${f1(f.x)},${f1(y)})`);
+    setT(f.inner, `rotate(${f1(f.dir > 0 ? ang : ang + 180)}) scale(${f.sc * (f.dir > 0 ? 1 : -1)},${f.sc})`);
+    if (tt >= 1) { f.state = 'idle'; f.g.style.display = 'none'; ripple(f.x, f.y0, f.sc); sfx.splash(.3); }
+  }
+  for (const r of ripples) {
+    if (r.life <= 0) { r.e.setAttribute('opacity', 0); continue; }
+    r.life -= dt * 1.1; r.x -= S.v * PX_PER_M * .18 * dt;
+    const k = 1 - r.life;
+    r.e.setAttribute('cx', f1(r.x)); r.e.setAttribute('cy', f1(r.y)); r.e.setAttribute('rx', f1((6 + k * 30) * r.s)); r.e.setAttribute('ry', f1((2 + k * 7) * r.s));
+    r.e.setAttribute('opacity', f1(Math.max(0, r.life) * 100) / 100);
+  }
+
+  // —— 骑手姿态 ——
+  const cad = S.crankW * 60 / TAU;
+  const effort = S.pedaling ? clamp(cad / 70, 0, 1.4) : 0;
+  const leanT = clamp(-S.accel * 1.1, -3, 6) + (S.braking && S.v > .2 ? 3 : 0) + WD * 2 + effort * .8;
+  S.lean = smooth(S.lean, leanT, 5, dt);
+  S.bob = Math.cos(2 * S.crank) * 1.6 * effort;
+  const lean = S.lean + Math.sin(S.crank) * .5 * effort;   // 随踏板轻微左右（俯视）→ 侧视表现为前后微晃
   const vib = S.v > .3 ? (Math.sin(t * 37) * .35 + Math.sin(t * 23.3) * .3) * Math.min(1, S.v / 6) : 0;
   setT(rig, `translate(0,${f1(vib)})`);
   const bodyT = `translate(0,${f1(S.bob)}) rotate(${f1(lean)},${PIVOT.x},${PIVOT.y})`;
@@ -110,7 +142,7 @@
     const kx = vx / vy;
     for (const d of rainDrops) {
       d.x += vx * d.z * dt; d.y += vy * d.z * dt;
-      if (d.y > d.gy) { if (Math.random() < .5 && d.gy > ROAD_TOP) spawnSplash(d.x, d.gy); d.y = rand(-150, -10); d.x = rand(-100, 1900); d.gy = rand(640, 900); }
+      if (d.y > d.gy) { if (Math.random() < .5 && d.gy > ROAD_TOP) spawnSplash(d.x, d.gy); d.y = rand(Math.min(-150, vb.y - 40), -10); d.x = rand(-100, 1900); d.gy = rand(640, Math.max(900, vb.y + vb.h)); }
       if (d.x < -150) d.x += 1900;
       const l = 22 * d.z;
       d.e.setAttribute('x1', f1(d.x)); d.e.setAttribute('y1', f1(d.y)); d.e.setAttribute('x2', f1(d.x - kx * l)); d.e.setAttribute('y2', f1(d.y - l));
@@ -228,8 +260,10 @@ function step(dt, rdt) {
 rebuildChain();
 setCad(S.targetCad);
 refreshUI();
-if (Q.get('panel') === '0' || innerWidth < 760) { $('panel').classList.add('collapsed'); $('btnFold').textContent = '+'; }
+if (Q.get('panel') === '0') setFold(true);
+if (Q.get('panel') === '1') { setFold(false); fitAspect(false); }
 if (Q.get('help') === '1') $('help').classList.add('show');
+if (S.labels && portrait) fitAspect(false);
 if (Q.get('zoom')) { const z = +Q.get('zoom'); zoomAt(z, +(Q.get('zx') || 780), +(Q.get('zy') || 520)); }
 if (Q.get('mouth') === '1') S.mouthTarget = 1;
 if (Q.get('bubble')) bubble(Q.get('bubble'));

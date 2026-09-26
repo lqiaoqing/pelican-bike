@@ -1,20 +1,13 @@
-  fish() { autoCatch(); },
-  poke() { pokePelican(); },
-  view() { S.zoom = 1; S.tx = 0; S.ty = 0; applyCam(); },
-  bell() { ringBell(); },
-};
-$('btnPlay').onclick = actions.play; $('btnSlow').onclick = actions.slow; $('btnSound').onclick = actions.sound;
-$('btnNight').onclick = actions.night; $('btnRain').onclick = actions.rain; $('btnWind').onclick = actions.wind;
-$('btnLabels').onclick = actions.labels; $('btnFish').onclick = actions.fish; $('btnPoke').onclick = actions.poke;
-$('btnView').onclick = actions.view; $('btnBell').onclick = actions.bell;
-$('gDown').onclick = () => setGear(S.gear - 1); $('gUp').onclick = () => setGear(S.gear + 1);
-$('cad').oninput = e => setCad(+e.target.value);
-const brakeBtn = $('btnBrake');
-const brakeOn = e => { e.preventDefault(); S.brakeBtn = true; brakeBtn.classList.add('on'); audio(); };
-const brakeOff = () => { S.brakeBtn = false; brakeBtn.classList.remove('on'); };
-brakeBtn.addEventListener('pointerdown', brakeOn); ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => brakeBtn.addEventListener(ev, brakeOff));
-$('btnFold').onclick = () => { const p = $('panel'); p.classList.toggle('collapsed'); $('btnFold').textContent = p.classList.contains('collapsed') ? '+' : '–'; };
+function setFold(c) { $('panel').classList.toggle('collapsed', c); $('btnFold').textContent = c ? '+' : '–'; }
+$('btnFold').onclick = () => { setFold(!$('panel').classList.contains('collapsed')); if (portrait) fitAspect(true); };
 $('btnHelp').onclick = () => $('help').classList.toggle('show');
+$('helpClose').onclick = () => $('help').classList.remove('show');
+// 手机折叠栏上的快捷按钮
+const qBrake = $('qBrake');
+qBrake.addEventListener('pointerdown', e => { brakeOn(e); qBrake.classList.add('on'); });
+['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => qBrake.addEventListener(ev, () => { brakeOff(); qBrake.classList.remove('on'); }));
+qBrake.addEventListener('contextmenu', e => e.preventDefault());
+$('qFish').onclick = actions.fish; $('qBell').onclick = actions.bell;
 bell.addEventListener('click', e => { e.stopPropagation(); if (!dragMoved) ringBell(); });
 [lay.body, lay.neck, lay.head, lay.tail, lay.nearWing, lay.farWing].forEach(x => { x.classList.add('clickable'); x.addEventListener('click', e => { if (!dragMoved) { e.stopPropagation(); pokePelican(); } }); });
 
@@ -39,8 +32,8 @@ addEventListener('keydown', e => {
   else if (k === 'f') actions.fish();
   else if (k === 'c') actions.poke();
   else if (k === 'h' || k === '?') $('help').classList.toggle('show');
-  else if (k === '+' || k === '=') zoomAt(1.2, 800, 520);
-  else if (k === '-' || k === '_') zoomAt(1 / 1.2, 800, 520);
+  else if (k === '+' || k === '=') zoomAt(1.2, camC().x, camC().y);
+  else if (k === '-' || k === '_') zoomAt(1 / 1.2, camC().x, camC().y);
   else if (k === '0') actions.view();
   else if (k === 'escape') $('help').classList.remove('show');
 });
@@ -51,7 +44,8 @@ addEventListener('blur', () => { S.brakeKey = false; brakeOff(); });
 function svgPt(cx, cy) { const p = svg.createSVGPoint(); p.x = cx; p.y = cy; return p.matrixTransform(svg.getScreenCTM().inverse()); }
 function applyCam() {
   S.zoom = clamp(S.zoom, 1, 3.2);
-  S.tx = clamp(S.tx, 1600 * (1 - S.zoom), 0); S.ty = clamp(S.ty, 900 * (1 - S.zoom), 0);
+  // 平移范围 = 当前取景框（横屏即 0 0 1600 900，与原行为一致）
+  S.tx = clamp(S.tx, (vb.x + vb.w) * (1 - S.zoom), vb.x * (1 - S.zoom)); S.ty = clamp(S.ty, (vb.y + vb.h) * (1 - S.zoom), vb.y * (1 - S.zoom));
   setT(cam, `translate(${f1(S.tx)},${f1(S.ty)}) scale(${S.zoom.toFixed(4)})`);
 }
 function zoomAt(k, x, y) { const z0 = S.zoom, z1 = clamp(z0 * k, 1, 3.2); S.tx = x - (x - S.tx) * z1 / z0; S.ty = y - (y - S.ty) * z1 / z0; S.zoom = z1; applyCam(); }
@@ -78,13 +72,83 @@ const endPtr = e => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch0 = 0; }
 svg.addEventListener('pointerup', endPtr); svg.addEventListener('pointercancel', endPtr);
 svg.addEventListener('pointerleave', () => $('tip').classList.remove('show'));
 svg.addEventListener('dblclick', () => actions.view());
-// 竖屏：把视口收窄到以骑手为中心的区域（上下由延展的天空/人行道填满）
-function fitAspect() {
-  const asp = innerWidth / innerHeight;
-  if (asp < 1.25) { const w = asp < .8 ? 820 : 1200, h = w / asp; svg.setAttribute('viewBox', `${f1(760 - w / 2)} ${f1(560 - h / 2)} ${w} ${f1(h)}`); svg.setAttribute('preserveAspectRatio', 'xMidYMid meet'); }
-  else { svg.setAttribute('viewBox', '0 0 1600 900'); svg.setAttribute('preserveAspectRatio', 'xMidYMid slice'); }
+// ===== 布局与取景 =====
+// .mob  = 手机竖屏 / 窄竖屏：顶部紧凑 HUD + 底部可折叠控制台
+// .short = 横屏但很矮（手机横屏）：HUD 缩小、控制台默认折叠
+// 竖屏（宽高比 < 1.25）：按“骑手包围盒”自动取景，让鹈鹕和车在 HUD 与控制台之间的空白区域里尽量大、居中
+const RB = { cx: 750, cy: 537, w: 600, h: 520 };   // 骑手（含车、喙、影子）包围盒，viewBox 坐标
+let vb = { x: 0, y: 0, w: 1600, h: 900 }, portrait = false, layoutMode = null, vbAnim = 0;
+const camC = () => portrait ? P(vb.x + vb.w / 2, RB.cy) : P(800, 520);
+function setVB(v) { vb = v; svg.setAttribute('viewBox', `${f1(v.x)} ${f1(v.y)} ${f1(v.w)} ${f1(v.h)}`); }
+function applyLayoutClass() {
+  const W = innerWidth, H = innerHeight, asp = W / H, root = document.documentElement;
+  const mob = asp < 1 || (W <= 760 && asp < 1.25), short = !mob && H <= 500, mode = mob ? 'mob' : short ? 'short' : 'desk';
+  root.classList.toggle('mob', mob); root.classList.toggle('short', short);
+  root.style.setProperty('--vh', H + 'px');
+  if (mode !== layoutMode) {   // 进入手机布局时默认折叠控制台；回到桌面布局时恢复展开
+    if (layoutMode !== null || mode !== 'desk') setFold(mode !== 'desk' || Q.get('panel') === '0');
+    layoutMode = mode;
+  }
+  return mob;
 }
-addEventListener('resize', fitAspect); fitAspect();
+// 竖屏结构标注：鹈鹕相关的标签排在骑手上方、车体相关的排在下方，三列网格，字号按屏幕换算成约 11px
+const LAB_ROW = 24, LAB_COLS = 3, LAB_PX = 11;
+function labelBand() { const n = Math.ceil(labelEls.length / 2 / LAB_COLS); return n * LAB_ROW + 8; }
+function layoutLabels(mob, v, s, top, bot) {
+  if (!mob) { labelEls.forEach(o => { o.lx = o.d.lx; o.ly = o.d.ly; o.k = 1; setT(o.box, `translate(${o.d.lx},${o.d.ly})`); }); return; }
+  const W = innerWidth, k = LAB_PX / 13 / s, colW = (W - 12) / LAB_COLS;
+  const byY = labelEls.slice().sort((a, b) => a.d.ly - b.d.ly), half = Math.ceil(byY.length / 2);
+  [[byY.slice(0, half), top + 4], [byY.slice(half), bot - labelBand() + 4]].forEach(([grp, y0]) => {
+    const per = Math.ceil(grp.length / LAB_COLS), sx = grp.slice().sort((a, b) => a.d.lx - b.d.lx);
+    for (let c = 0; c < LAB_COLS; c++) sx.slice(c * per, c * per + per).sort((a, b) => a.d.ly - b.d.ly).forEach((o, r) => {
+      o.k = k; o.lx = v.x + (6 + colW * (c + .5)) / s; o.ly = v.y + (y0 + r * LAB_ROW + LAB_ROW / 2) / s;
+      setT(o.box, `translate(${f1(o.lx)},${f1(o.ly)}) scale(${k.toFixed(3)})`);
+    });
+  });
+}
+function fitAspect(animate) {
+  const W = innerWidth, H = innerHeight; if (!W || !H) return;
+  const mob = applyLayoutClass(), asp = W / H;
+  portrait = asp < 1.25;
+  let t, top = 0, bot = H;
+  if (!portrait) { t = { x: 0, y: 0, w: 1600, h: 900 }; svg.setAttribute('preserveAspectRatio', 'xMidYMid slice'); }
+  else {
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    if (mob) { top = $('hud').getBoundingClientRect().bottom + 4; bot = $('panel').getBoundingClientRect().top - 4; }
+    const lab = S.labels && mob ? labelBand() : 0;
+    const avail = Math.max(100, bot - top - 2 * lab);
+    const s = Math.min(W / (asp < .8 ? 640 : 1200), avail / RB.h, W / RB.w);
+    const vw = W / s, vh = H / s, mid = top + lab + avail / 2;
+    t = { x: RB.cx - vw / 2, y: RB.cy - mid / s, w: vw, h: vh };
+  }
+  document.documentElement.style.setProperty('--bandTop', f1(top) + 'px');
+  layoutLabels(portrait && mob, t, W / t.w, top, bot);
+  cancelAnimationFrame(vbAnim);
+  const from = vb, sameAsp = Math.abs(from.w / from.h - t.w / t.h) < .01;
+  if (!animate || !sameAsp) { setVB(t); applyCam(); return; }
+  const t0 = performance.now();
+  const tick = now => {
+    const u = Math.min(1, (now - t0) / 280), e = u * (2 - u);
+    setVB({ x: lerp(from.x, t.x, e), y: lerp(from.y, t.y, e), w: lerp(from.w, t.w, e), h: lerp(from.h, t.h, e) }); applyCam();
+    if (u < 1) vbAnim = requestAnimationFrame(tick);
+  };
+  vbAnim = requestAnimationFrame(tick);
+}
+// 旋转 / 窗口变化：微信等内置浏览器在 orientationchange 后尺寸会延迟更新，所以多补几次
+let fitTimer = 0;
+const refit = () => { fitAspect(false); clearTimeout(fitTimer); fitTimer = setTimeout(() => { fitAspect(false); fitTimer = setTimeout(() => fitAspect(false), 400); }, 120); };
+addEventListener('resize', refit); addEventListener('orientationchange', refit);
+if (window.visualViewport) visualViewport.addEventListener('resize', refit);
+addEventListener('pageshow', refit);
+fitAspect(false);
+// 触屏：阻止页面被拖动 / 回弹 / 双指缩放整页（控制台和帮助里的滚动区域除外）
+document.addEventListener('touchmove', e => { if (!(e.target.closest && e.target.closest('#panelBody,#help,input'))) e.preventDefault(); }, { passive: false });
+['gesturestart', 'gesturechange'].forEach(ev => document.addEventListener(ev, e => e.preventDefault(), { passive: false }));
+// 微信安卓：忽略“字体大小”设置，避免文字被放大后撑破布局
+(function () {
+  const fix = () => { try { WeixinJSBridge.invoke('setFontSizeCallback', { fontSize: 0 }); WeixinJSBridge.on('menu:setfont', () => WeixinJSBridge.invoke('setFontSizeCallback', { fontSize: 0 })); } catch (e) { } };
+  if (typeof WeixinJSBridge === 'object' && typeof WeixinJSBridge.invoke === 'function') fix(); else document.addEventListener('WeixinJSBridgeReady', fix, false);
+})();
 
 /* =====================================================================
  *  物理
@@ -222,35 +286,3 @@ function render(dt, rdt) {
   const lx = hl.sx + 20, ly = HORIZON - 62 - 87;
   setT(lhLight, `translate(${f1(lx)},${f1(ly)})`);
   const ph = t * 1.3, c = Math.cos(ph), len = 900 * Math.abs(c) + 40, dir = c > 0 ? 1 : -1, spread = 14 + 30 * (1 - Math.abs(c));
-  lhBeam.setAttribute('d', `M0 -3 L${f1(dir * len)} ${f1(-spread)} L${f1(dir * len)} ${f1(spread)} L0 3Z`);
-  lhBeam.setAttribute('opacity', f1((.35 + .65 * Math.abs(Math.sin(ph))) * 100) / 100);
-  lampGlows.forEach((gl, i) => setT(gl, `translate(${f1(lamps[i].sx)},0)`));
-
-  // —— 鱼 ——
-  nextJump -= dt;
-  if (nextJump < 0) { const f = fishes.find(f => f.state === 'idle'); if (f) launchFish(f); nextJump = rand(1.8, 4.2); }
-  for (const f of fishes) {
-    if (f.state !== 'jump') continue;
-    f.t += dt / f.dur; f.x += (f.vx - S.v * PX_PER_M * .18) * dt;
-    const tt = f.t, y = f.y0 - 4 * f.h * tt * (1 - tt), vy = -4 * f.h * (1 - 2 * tt) / f.dur;
-    f.pos = P(f.x, y);
-    const ang = deg(Math.atan2(vy, f.vx));
-    setT(f.g, `translate(${f1(f.x)},${f1(y)})`);
-    setT(f.inner, `rotate(${f1(f.dir > 0 ? ang : ang + 180)}) scale(${f.sc * (f.dir > 0 ? 1 : -1)},${f.sc})`);
-    if (tt >= 1) { f.state = 'idle'; f.g.style.display = 'none'; ripple(f.x, f.y0, f.sc); sfx.splash(.3); }
-  }
-  for (const r of ripples) {
-    if (r.life <= 0) { r.e.setAttribute('opacity', 0); continue; }
-    r.life -= dt * 1.1; r.x -= S.v * PX_PER_M * .18 * dt;
-    const k = 1 - r.life;
-    r.e.setAttribute('cx', f1(r.x)); r.e.setAttribute('cy', f1(r.y)); r.e.setAttribute('rx', f1((6 + k * 30) * r.s)); r.e.setAttribute('ry', f1((2 + k * 7) * r.s));
-    r.e.setAttribute('opacity', f1(Math.max(0, r.life) * 100) / 100);
-  }
-
-  // —— 骑手姿态 ——
-  const cad = S.crankW * 60 / TAU;
-  const effort = S.pedaling ? clamp(cad / 70, 0, 1.4) : 0;
-  const leanT = clamp(-S.accel * 1.1, -3, 6) + (S.braking && S.v > .2 ? 3 : 0) + WD * 2 + effort * .8;
-  S.lean = smooth(S.lean, leanT, 5, dt);
-  S.bob = Math.cos(2 * S.crank) * 1.6 * effort;
-  const lean = S.lean + Math.sin(S.crank) * .5 * effort;   // 随踏板轻微左右（俯视）→ 侧视表现为前后微晃
