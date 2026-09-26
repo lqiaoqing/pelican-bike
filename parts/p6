@@ -179,7 +179,7 @@ function physics(dt) {
   // 曲柄：踩踏时由链条严格耦合；滑行时棘轮脱开，曲柄减速并停在水平位
   const wCouple = (S.v * PX_PER_M / WR) / r;       // 车轮角速度 / 齿比
   if (S.pedaling) {
-    if (S.crankW < wCouple - .05) S.crankW = Math.min(wCouple, S.crankW + 18 * dt);   // 追上后棘轮啄合
+    if (S.crankW < wCouple - .05) S.crankW = Math.min(wCouple, S.crankW + 18 * dt);   // 追上后棘轮啮合
     else S.crankW = wCouple;
   } else {
     S.crankW = smooth(S.crankW, 0, 2.2, dt);
