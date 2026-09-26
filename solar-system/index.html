@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>太阳系 · 开普勒轨道 SVG 动画</title>
+<style>
+:root{--panel:rgba(9,14,30,.74);--line:rgba(150,180,255,.16);--txt:#dde5ff;--dim:#8d99bb;--acc:#ffc766;--acc2:#7cc4ff}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#02030a;color:var(--txt);overflow:hidden;
+  font-family:"PingFang SC","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","WenQuanYi Micro Hei",system-ui,sans-serif}
+#stage{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none;user-select:none}
+#stage.dragging{cursor:grabbing}
+.panel{position:fixed;background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 10px 30px rgba(0,0,0,.4);z-index:5}
+.hidden{display:none!important}
+button{font:inherit;color:var(--txt);background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:8px;
+  padding:5px 10px;cursor:pointer;transition:background .15s,border-color .15s}
+button:hover{background:rgba(255,255,255,.13);border-color:rgba(150,180,255,.4)}
+button.primary{background:rgba(255,199,102,.16);border-color:rgba(255,199,102,.45);color:#ffe2a8;min-width:84px}
+button.on{background:rgba(124,196,255,.2);border-color:rgba(124,196,255,.55)}
+input[type=range]{accent-color:var(--acc);vertical-align:middle}
+input[type=checkbox]{accent-color:var(--acc2);vertical-align:-2px}
+/* title / legend */
+#legend{top:14px;left:14px;width:372px;padding:14px 16px 12px;font-size:12.5px;line-height:1.6;max-height:calc(100vh - 310px);overflow:auto}
+#legend h1{margin:0;font-size:21px;letter-spacing:2px;font-weight:700}
+#legend h1 small{font-size:11.5px;color:var(--dim);letter-spacing:.5px;font-weight:400;margin-left:6px}
+#legend .sub{color:var(--dim);font-size:11.5px;margin:2px 0 8px}
+#legend summary{cursor:pointer;color:var(--acc);font-weight:600;margin:6px 0 4px;outline:none}
+#legend ul{margin:4px 0 6px;padding-left:16px}
+#legend li{margin:2px 0}
+#legend b{color:#fff}
+.key{color:var(--acc)}
+.verify{margin-top:6px;padding:7px 9px;border-radius:8px;background:rgba(124,196,255,.07);border:1px dashed rgba(124,196,255,.3);font-size:11.5px;color:#bcd6ff;font-family:ui-monospace,Menlo,Consolas,monospace,"Noto Sans CJK SC"}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 4px}
+.chips button{padding:3px 8px;font-size:12px;display:flex;align-items:center;gap:5px}
+.chips i{width:9px;height:9px;border-radius:50%;display:inline-block}
+/* controls */
+#controls{left:50%;bottom:14px;transform:translateX(-50%);padding:10px 14px;font-size:13px;width:min(780px,calc(100vw - 20px))}
+#controls .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center}
+#controls .row+.row{margin-top:7px}
+#controls .info{color:var(--dim);gap:18px}
+#controls .info b{color:#fff;font-variant-numeric:tabular-nums;font-weight:600}
+#speed{width:170px}
+#speedTxt{display:inline-block;min-width:88px;color:#ffe2a8;font-variant-numeric:tabular-nums}
+#controls label{white-space:nowrap;cursor:pointer}
+#tilt{width:90px}
+.sep{width:1px;height:18px;background:var(--line)}
+/* inset */
+#insetWrap{left:14px;bottom:14px;width:262px;padding:0;overflow:hidden}
+#insetWrap .cap{position:absolute;left:10px;top:7px;font-size:12px;color:#ffe2a8;pointer-events:none}
+#insetWrap .cap2{position:absolute;left:10px;bottom:6px;font-size:10.5px;color:var(--dim);pointer-events:none}
+#inset{display:block;width:262px;height:262px;cursor:pointer}
+/* scale bars */
+#scalebars{right:14px;bottom:14px;padding:9px 12px;font-size:11.5px;color:var(--dim);min-width:190px}
+#scalebars .bar{height:4px;border-radius:2px;margin:3px 0 7px;background:linear-gradient(90deg,var(--acc2),#fff)}
+#scalebars .bar.out{background:linear-gradient(90deg,#f0a35e,#fff)}
+/* card */
+#card{top:14px;right:14px;width:330px;padding:14px 16px 12px;font-size:12.5px;max-height:calc(100vh - 140px);overflow:auto}
+#card .close{position:absolute;right:10px;top:10px;padding:1px 8px}
+#card h2{margin:0 0 2px;font-size:20px;display:flex;align-items:center;gap:8px}
+#card h2 small{font-size:12px;color:var(--dim);font-weight:400}
+#card .dot{width:14px;height:14px;border-radius:50%;box-shadow:0 0 10px currentColor}
+#card .type{color:var(--dim);font-size:11.5px;margin-bottom:8px}
+#card table{width:100%;border-collapse:collapse}
+#card td{padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05);vertical-align:top}
+#card td:first-child{color:var(--dim);width:92px;white-space:nowrap}
+#card td b{color:#fff;font-variant-numeric:tabular-nums;font-weight:600}
+#card .fact{margin-top:8px;padding:8px 10px;background:rgba(255,199,102,.07);border-left:3px solid var(--acc);border-radius:4px;line-height:1.55}
+#card .acts{margin-top:9px;display:flex;gap:6px}
+#tip{position:fixed;pointer-events:none;z-index:9;background:rgba(6,10,24,.92);border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:12px;white-space:nowrap}
+#hint{position:fixed;top:14px;left:50%;transform:translateX(-50%);font-size:11.5px;color:var(--dim);z-index:4;pointer-events:none;text-align:center}
+/* svg styles */
+.lbl{font-size:13px;font-weight:600;paint-order:stroke;stroke:#02030a;stroke-width:3.5px;stroke-linejoin:round;pointer-events:none}
+.lbl .en{font-size:10px;font-weight:400;fill:#93a0c2}
+.tw{animation:tw var(--d) ease-in-out infinite;animation-delay:var(--dl)}
+@keyframes tw{0%,100%{opacity:var(--o)}50%{opacity:.08}}
+.sunPulse{animation:sp 5s ease-in-out infinite}
+@keyframes sp{0%,100%{opacity:1}50%{opacity:.78}}
+.selring{animation:sel 1.6s ease-in-out infinite}
+@keyframes sel{0%,100%{stroke-opacity:.9}50%{stroke-opacity:.3}}
+.planet{cursor:pointer}
+.orbit{fill:none;vector-effect:non-scaling-stroke;transition:stroke-opacity .2s}
+.noOrbits .orbit,.noOrbits .brk{display:none}
+.noLabels .lbl{display:none}
+.noBelt .beltG{display:none}
+@media (max-width:900px){#legend{width:calc(100vw - 28px);max-height:40vh}#insetWrap,#scalebars{display:none}#card{top:auto;bottom:150px;width:calc(100vw - 28px);max-height:45vh}}
+</style>
+</head>
+<body>
+<svg id="stage" xmlns="http://www.w3.org/2000/svg" aria-label="太阳系动画">
+  <defs id="defs"></defs>
+</svg>
+
+<div id="hint">滚轮缩放 · 拖拽平移 · 点击行星查看资料 · 空格暂停 · 双击复位</div>
+
+<div id="legend" class="panel">
+  <h1>太阳系 <small>Solar System · SVG</small></h1>
+  <div class="sub">真实公转周期 · 真实偏心率椭圆轨道 · 开普勒第二定律变速</div>
+  <div class="chips" id="chips"></div>
+  <details id="legendDetails" open>
+    <summary>比例说明（请先读）</summary>
+    <ul>
+      <li><span class="key">距离：</span><b>内行星之间</b>（水 0.387、金 0.723、地 1.000、火 1.524 AU）轨道半长轴比例<b>精确</b>；<b>外行星之间</b>（木 5.203、土 9.537、天 19.19、海 30.07 AU）比例<b>精确</b>；<b>两组之间压缩</b>（小行星带区域，琥珀色虚线为比例断层）——内组比例尺是外组的 <b id="kRatio"></b> 倍。</li>
+      <li><span class="key">周期：</span>公转周期严格按真实比例（水 0.2408、金 0.6152、地 1、火 1.8808、木 11.862、土 29.457、天 84.011、海 164.79 年）。</li>
+      <li><span class="key">轨道：</span>采用真实偏心率的椭圆，太阳位于焦点；行星近日点快、远日点慢（开普勒第二定律）。</li>
+      <li><span class="key">方位：</span>由 J2000 平均轨道根数推算，初始为今天各行星的真实日心黄经方位（向右为春分点方向）。</li>
+      <li><span class="key">大小：</span>行星大小为示意（与距离不同比例），但大小顺序正确：木 &gt; 土 &gt; 天 &gt; 海 &gt; 地 &gt; 金 &gt; 火 &gt; 水；月球与地球的大小比为真实的 0.27。</li>
+      <li><span class="key">小行星带：</span>各环按其真实半长轴的开普勒周期转动，可见柯克伍德空隙（2.50 / 2.82 / 2.95 AU）。</li>
+    </ul>
+    <div class="verify" id="verify"></div>
+  </details>
+</div>
+
+<div id="insetWrap" class="panel">
+  <svg id="inset" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 262 262"></svg>
+  <div class="cap">内行星放大窗 <span id="insetZoom"></span></div>
+  <div class="cap2">同一比例尺 · 虚线外为压缩区</div>
+</div>
+
+<div id="scalebars" class="panel">
+  <div>内组比例尺 · <b style="color:#fff">1 AU</b></div><div class="bar" id="barIn"></div>
+  <div>外组比例尺 · <b style="color:#fff">10 AU</b></div><div class="bar out" id="barOut"></div>
+  <div id="zoomTxt"></div>
+</div>
+
+<div id="controls" class="panel">
+  <div class="row">
+    <button id="btnToday" title="回到今天 (T)">⟲ 今天</button>
+    <button id="btnRev" title="倒放 (R)">◀◀ 倒放</button>
+    <button id="btnPlay" class="primary" title="播放/暂停 (空格)">❚❚ 暂停</button>
+    <span class="sep"></span>
+    <label>速度 <input id="speed" type="range" min="0" max="100" step="0.1" value="48"></label>
+    <span id="speedTxt"></span>
+  </div>
+  <div class="row info">
+    <span>模拟日期 <b id="date"></b></span>
+    <span>已流逝 <b id="elapsed"></b></span>
+    <span>地球公转 <b id="orbits"></b> 圈</span>
+  </div>
+  <div class="row">
+    <label><input type="checkbox" id="tLabels" checked> 标签</label>
+    <label><input type="checkbox" id="tOrbits" checked> 轨道</label>
+    <label><input type="checkbox" id="tBelt" checked> 小行星带</label>
+    <label><input type="checkbox" id="tInset" checked> 放大窗</label>
+    <label>倾角 <input id="tilt" type="range" min="0" max="72" value="0"></label>
+    <span class="sep"></span>
+    <button id="vAll">全景</button><button id="vInner">内太阳系</button>
+  </div>
+</div>
+
+<div id="card" class="panel hidden"><button class="close" id="cardClose" title="关闭 (Esc)">×</button><div id="cardBody"></div></div>
+<div id="tip" class="hidden"></div>
+
+<script>
+'use strict';
+/* ====================== 数据（NASA Planetary Fact Sheet / JPL J2000 平均轨道根数） ====================== */
+const DEG = Math.PI/180, TAU = Math.PI*2;
+const J2000 = Date.UTC(2000,0,1,12);           // J2000.0 历元
+const YEAR_MS = 365.25*86400000;
+/* 距离比例尺（世界坐标单位 / AU）：内组与外组各自线性、过原点 → 组内比例精确 */
+const K_IN  = 36;               // 内行星组
+const K_OUT = 470/30.07;        // 外行星组（海王星半长轴 = 470）
+const MOON_P = 27.321661/365.25;
+const PLANETS = [
+ {id:'mercury',zh:'水星',en:'Mercury',grp:'in', a:0.387, P:0.2408, e:0.20563593,w:77.45779628, L0:252.25032350,R:2.3, col:'#c9c2b8',
+  type:'类地行星（岩石）',diam:4879,  mass:0.0553,moons:0,  rot:'58.6 天',          tilt:'0.03°', temp:'167 °C（昼 430 / 夜 −180）',days:87.97,
+  fact:'离太阳最近、轨道偏心率最大（0.206）的行星：近日点 0.307 AU、远日点 0.467 AU，在动画中可明显看到它时快时慢。'},
+ {id:'venus',  zh:'金星',en:'Venus',  grp:'in', a:0.723, P:0.6152, e:0.00677672,w:131.60246718,L0:181.97909950,R:3.7, col:'#f0cf8a',
+  type:'类地行星（岩石）',diam:12104, mass:0.815, moons:0,  rot:'243 天（逆向自转）',tilt:'177.4°',temp:'464 °C',days:224.70,
+  fact:'自转一周（243 天）比公转一周（225 天）还长，且方向相反；浓厚的 CO₂ 大气使它成为太阳系最热的行星。'},
+ {id:'earth',  zh:'地球',en:'Earth',  grp:'in', a:1.000, P:1.0000, e:0.01671123,w:102.93768193,L0:100.46457166,R:3.9, col:'#5aa8ff',
+  type:'类地行星（岩石）',diam:12756, mass:1,     moons:1,  rot:'23.93 小时',       tilt:'23.44°',temp:'15 °C',days:365.26,
+  fact:'目前已知唯一存在生命的星球。月球平均距离 384,400 km，直径 3,475 km（约为地球的 0.27 倍）。'},
+ {id:'mars',   zh:'火星',en:'Mars',   grp:'in', a:1.524, P:1.8808, e:0.09339410,w:336.05637041,L0:355.44656795,R:2.9, col:'#e0673d',
+  type:'类地行星（岩石）',diam:6792,  mass:0.107, moons:2,  rot:'24.62 小时',       tilt:'25.19°',temp:'−65 °C',days:686.98,
+  fact:'拥有太阳系最高的火山——奥林匹斯山（约 22 km）。两颗小卫星：火卫一、火卫二。'},
+ {id:'jupiter',zh:'木星',en:'Jupiter',grp:'out',a:5.203, P:11.862, e:0.04838624,w:14.72847983, L0:34.39644051, R:11,  col:'#d8a878',
+  type:'气态巨行星',     diam:142984,mass:317.8, moons:115,rot:'9.93 小时',        tilt:'3.13°', temp:'−110 °C（云顶）',days:4332.59,
+  fact:'质量是其余七大行星总和的约 2.5 倍；大红斑是一个已持续数百年、比地球还大的风暴。'},
+ {id:'saturn', zh:'土星',en:'Saturn', grp:'out',a:9.537, P:29.457, e:0.05386179,w:92.59887831, L0:49.95424423, R:9.3, col:'#e8cf96',
+  type:'气态巨行星',     diam:120536,mass:95.2,  moons:293,rot:'10.66 小时',       tilt:'26.73°',temp:'−140 °C（云顶）',days:10759.22,
+  fact:'平均密度（0.69 g/cm³）比水还小；光环直径约 27 万 km，但厚度大多只有约 10 米到 1 公里。'},
+ {id:'uranus', zh:'天王星',en:'Uranus',grp:'out',a:19.19, P:84.011, e:0.04725744,w:170.95427630,L0:313.23810451,R:6.3, col:'#9fe3ee',
+  type:'冰巨行星',       diam:51118, mass:14.5,  moons:29, rot:'17.24 小时（逆向）',tilt:'97.77°',temp:'−195 °C（云顶）',days:30688.5,
+  fact:'自转轴倾角约 98°，几乎是“躺着”公转；1781 年由赫歇尔发现，是第一颗用望远镜发现的行星。'},
+ {id:'neptune',zh:'海王星',en:'Neptune',grp:'out',a:30.07,P:164.79, e:0.00859048,w:44.96476227, L0:304.87997031,R:6.0, col:'#5b86ff',
+  type:'冰巨行星',       diam:49528, mass:17.1,  moons:16, rot:'16.11 小时',       tilt:'28.32°',temp:'−200 °C（云顶）',days:60182,
+  fact:'太阳系风速最快的行星（可达约 2,100 km/h）；1846 年先由数学计算预言位置，随后才被观测发现。'}
+];
+PLANETS.forEach(p=>{p.k = p.grp==='in'?K_IN:K_OUT;});
+const P_BY = Object.fromEntries(PLANETS.map(p=>[p.id,p]));
+
+/* ====================== 工具 ====================== */
+const NS='http://www.w3.org/2000/svg';
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);if(attrs)for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e;}
+function rngFactory(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const $=id=>document.getElementById(id);
+const fmt=(n,d=0)=>n.toLocaleString('zh-CN',{minimumFractionDigits:d,maximumFractionDigits:d});
+
+/* 解开普勒方程，返回日心黄道坐标（AU） */
+function kepler(p,t){
+  let M=((p.L0-p.w)*DEG + TAU*t/p.P)%TAU; if(M<0)M+=TAU;
+  let E=M+p.e*Math.sin(M);
+  for(let i=0;i<8;i++){const d=(E-p.e*Math.sin(E)-M)/(1-p.e*Math.cos(E));E-=d;if(Math.abs(d)<1e-12)break;}
+  const nu=2*Math.atan2(Math.sqrt(1+p.e)*Math.sin(E/2),Math.sqrt(1-p.e)*Math.cos(E/2));
+  const r=p.a*(1-p.e*Math.cos(E)), L=nu+p.w*DEG;
+  return {r,L,x:r*Math.cos(L),y:r*Math.sin(L)};
+}
+
+/* ====================== 渐变 / 纹理定义 ====================== */
+const defs=$('defs');
+defs.innerHTML=`
+<radialGradient id="gSpace" cx="50%" cy="45%" r="75%"><stop offset="0" stop-color="#0a1030"/><stop offset=".55" stop-color="#050818"/><stop offset="1" stop-color="#010207"/></radialGradient>
+<radialGradient id="gNebA" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#5b3cc4" stop-opacity=".16"/><stop offset="1" stop-color="#5b3cc4" stop-opacity="0"/></radialGradient>
+<radialGradient id="gNebB" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#1e6fd9" stop-opacity=".13"/><stop offset="1" stop-color="#1e6fd9" stop-opacity="0"/></radialGradient>
+<radialGradient id="gNebC" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#d9481e" stop-opacity=".08"/><stop offset="1" stop-color="#d9481e" stop-opacity="0"/></radialGradient>
+<radialGradient id="gSunCore" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fffef6"/><stop offset=".38" stop-color="#fff4b8"/><stop offset=".72" stop-color="#ffc947"/><stop offset=".92" stop-color="#ff9124"/><stop offset="1" stop-color="#ef6a12"/></radialGradient>
+<radialGradient id="gSunCorona" cx="50%" cy="50%" r="50%"><stop offset=".5" stop-color="#fff2c4" stop-opacity=".85"/><stop offset=".64" stop-color="#ffc35a" stop-opacity=".38"/><stop offset=".82" stop-color="#ff8a2a" stop-opacity=".1"/><stop offset="1" stop-color="#ff7a1a" stop-opacity="0"/></radialGradient>
+<radialGradient id="gSunGlow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ffd27a" stop-opacity=".55"/><stop offset=".12" stop-color="#ffb04a" stop-opacity=".3"/><stop offset=".35" stop-color="#ff8030" stop-opacity=".1"/><stop offset=".65" stop-color="#ff6020" stop-opacity=".03"/><stop offset="1" stop-color="#ff6020" stop-opacity="0"/></radialGradient>
+<radialGradient id="gRays" cx="50%" cy="50%" r="50%"><stop offset=".3" stop-color="#fff0c0" stop-opacity=".55"/><stop offset="1" stop-color="#ffb04a" stop-opacity="0"/></radialGradient>
+<radialGradient id="gShade" cx=".68" cy=".5" r=".78" fx=".9" fy=".5"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset=".46" stop-color="#000" stop-opacity=".06"/><stop offset=".7" stop-color="#000" stop-opacity=".62"/><stop offset=".88" stop-color="#000" stop-opacity=".9"/><stop offset="1" stop-color="#000" stop-opacity=".96"/></radialGradient>
+<radialGradient id="gSpec" cx=".74" cy=".5" r=".36" fx=".8" fy=".5"><stop offset="0" stop-color="#fff" stop-opacity=".38"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+<radialGradient id="gMercury" cx="45%" cy="42%" r="62%"><stop offset="0" stop-color="#ddd8d0"/><stop offset=".6" stop-color="#9f988f"/><stop offset="1" stop-color="#6d675f"/></radialGradient>
+<radialGradient id="gVenus" cx="45%" cy="42%" r="62%"><stop offset="0" stop-color="#fff3cf"/><stop offset=".6" stop-color="#eccc88"/><stop offset="1" stop-color="#bf9150"/></radialGradient>
+<radialGradient id="gEarth" cx="45%" cy="42%" r="62%"><stop offset="0" stop-color="#6fb8ff"/><stop offset=".6" stop-color="#2468d0"/><stop offset="1" stop-color="#0f3180"/></radialGradient>
+<radialGradient id="gMars" cx="45%" cy="42%" r="62%"><stop offset="0" stop-color="#f6a57c"/><stop offset=".6" stop-color="#cc5a31"/><stop offset="1" stop-color="#83301a"/></radialGradient>
+<radialGradient id="gJupiter" cx="45%" cy="42%" r="62%"><stop offset="0" stop-color="#f6e2c8"/><stop offset=".6" stop-color="#d6ab80"/><stop offset="1" stop-color="#9a6a42"/></radialGradient>
+<radialGradient id="gSaturn" cx="45%" cy="42%" r="62%"><stop offset="0" stop-color="#fcf0d0"/><stop offset=".6" stop-color="#e5cb92"/><stop offset="1" stop-color="#ad8b54"/></radialGradient>
+<radialGradient id="gUranus" cx="45%" cy="42%" r="62%"><stop offset="0" stop-color="#e6fcff"/><stop offset=".6" stop-color="#a3e4ef"/><stop offset="1" stop-color="#63b4c8"/></radialGradient>
+<radialGradient id="gNeptune" cx="45%" cy="42%" r="62%"><stop offset="0" stop-color="#94bbff"/><stop offset=".6" stop-color="#3f72e2"/><stop offset="1" stop-color="#1c3894"/></radialGradient>
+<radialGradient id="gMoon" cx="40%" cy="40%" r="65%"><stop offset="0" stop-color="#f2f2f2"/><stop offset="1" stop-color="#8b8f99"/></radialGradient>
+<clipPath id="unitClip"><circle r="1"/></clipPath>`;
+
+/* 各行星表面细节（单位圆坐标 r=1，统一由 scale 放大） */
+const DECO={
+ mercury:`<g clip-path="url(#unitClip)" fill="#000" fill-opacity=".16"><circle cx="-.35" cy="-.3" r=".2"/><circle cx=".3" cy=".25" r=".26"/><circle cx="-.1" cy=".55" r=".14"/><circle cx=".45" cy="-.45" r=".12"/></g>`,
+ venus:`<g clip-path="url(#unitClip)" fill="none" stroke="#fff" stroke-opacity=".28" stroke-width=".12"><path d="M-1 -.35 Q-.3 -.6 .3 -.3 T1 -.4"/><path d="M-1 .15 Q-.2 -.05 .4 .2 T1 .1"/><path d="M-.9 .55 Q-.2 .4 .5 .62"/></g>`,
+ earth:`<g clip-path="url(#unitClip)"><g fill="#3f9a4e" fill-opacity=".9"><path d="M-.72 -.52 q.25 -.3 .55 -.22 q.18 .12 .05 .32 q-.1 .2 -.02 .42 q-.12 .12 -.3 -.05 q-.2 -.22 -.28 -.47z"/><path d="M.18 -.7 q.3 -.08 .5 .1 q.1 .25 -.08 .38 q-.2 .02 -.28 .2 q-.12 .15 -.18 -.05 q.02 -.32 .04 -.63z"/><path d="M.28 .22 q.25 -.02 .35 .2 q-.02 .3 -.25 .42 q-.12 -.18 -.1 -.62z"/><path d="M-.45 .35 q.18 .05 .2 .25 q-.12 .22 -.28 .08z"/></g><path d="M-.6 -.92 h1.2 v.14 h-1.2z M-.6 .8 h1.2 v.2 h-1.2z" fill="#f4f8ff" fill-opacity=".9"/><g fill="none" stroke="#fff" stroke-opacity=".5" stroke-width=".09" stroke-linecap="round"><path d="M-.9 -.1 q.3 -.15 .6 0"/><path d="M-.1 .05 q.3 .15 .7 -.05"/><path d="M-.5 .62 q.3 -.1 .55 .05"/></g></g><circle r="1.06" fill="none" stroke="#8fd0ff" stroke-opacity=".35" stroke-width=".1"/>`,
+ mars:`<g clip-path="url(#unitClip)"><g fill="#6e2512" fill-opacity=".45"><path d="M-.8 -.1 q.4 -.25 .8 -.05 q.3 .15 .7 .05 v.25 q-.5 .1 -.8 -.05 q-.35 -.1 -.7 .05z"/><circle cx=".35" cy=".45" r=".16"/></g><ellipse cx="0" cy="-.93" rx=".45" ry=".16" fill="#fff" fill-opacity=".9"/></g>`,
+ jupiter:`<g clip-path="url(#unitClip)"><rect x="-1" y="-.72" width="2" height=".14" fill="#a8744c" fill-opacity=".55"/><rect x="-1" y="-.42" width="2" height=".2" fill="#b98659" fill-opacity=".7"/><rect x="-1" y="-.1" width="2" height=".12" fill="#fff2dc" fill-opacity=".45"/><rect x="-1" y=".12" width="2" height=".22" fill="#9c6640" fill-opacity=".7"/><rect x="-1" y=".5" width="2" height=".12" fill="#a8744c" fill-opacity=".5"/><path d="M-1 -.3 q.5 .06 1 0 t1 0" stroke="#f8e6cf" stroke-width=".05" fill="none" opacity=".6"/><ellipse cx=".32" cy=".36" rx=".22" ry=".12" fill="#c2553a"/><ellipse cx=".32" cy=".36" rx=".13" ry=".06" fill="#e27a5a" fill-opacity=".7"/></g>`,
+ saturn:`<g clip-path="url(#unitClip)"><rect x="-1" y="-.55" width="2" height=".16" fill="#c9a86c" fill-opacity=".45"/><rect x="-1" y="-.15" width="2" height=".12" fill="#fff6dc" fill-opacity=".4"/><rect x="-1" y=".2" width="2" height=".18" fill="#bf9c62" fill-opacity=".45"/><ellipse cx="0" cy="-.9" rx=".4" ry=".12" fill="#8fa3a0" fill-opacity=".35"/></g>`,
+ uranus:`<g clip-path="url(#unitClip)"><rect x="-1" y="-.2" width="2" height=".4" fill="#ffffff" fill-opacity=".08"/></g>`,
+ neptune:`<g clip-path="url(#unitClip)"><ellipse cx="-.28" cy=".2" rx=".26" ry=".14" fill="#142a6e" fill-opacity=".8"/><path d="M-.6 -.35 q.4 -.12 .9 -.02" stroke="#dbe8ff" stroke-width=".08" fill="none" stroke-opacity=".7" stroke-linecap="round"/><path d="M-.1 .52 q.3 -.08 .6 .02" stroke="#dbe8ff" stroke-width=".06" fill="none" stroke-opacity=".5" stroke-linecap="round"/></g>`
+};
+const RING_BACK={
+ saturn:`<g transform="rotate(-18)" fill="none"><ellipse rx="1.42" ry=".42" stroke="#a89878" stroke-opacity=".35" stroke-width=".18"/><ellipse rx="1.76" ry=".52" stroke="#e8d3a2" stroke-opacity=".9" stroke-width=".36"/><ellipse rx="2.17" ry=".64" stroke="#cdb685" stroke-opacity=".75" stroke-width=".26"/></g>`,
+ uranus:`<g transform="rotate(8)" fill="none"><ellipse rx=".42" ry="1.75" stroke="#bfeff7" stroke-opacity=".35" stroke-width=".07"/><ellipse rx=".48" ry="1.95" stroke="#bfeff7" stroke-opacity=".2" stroke-width=".05"/></g>`
+};
+const RING_FRONT={
+ saturn:`<g transform="rotate(-18)" fill="none"><path d="M-1.42 0A1.42 .42 0 0 0 1.42 0" stroke="#a89878" stroke-opacity=".35" stroke-width=".18"/><path d="M-1.76 0A1.76 .52 0 0 0 1.76 0" stroke="#e8d3a2" stroke-opacity=".9" stroke-width=".36"/><path d="M-2.17 0A2.17 .64 0 0 0 2.17 0" stroke="#cdb685" stroke-opacity=".75" stroke-width=".26"/></g>`,
+ uranus:`<g transform="rotate(8)" fill="none"><path d="M0 -1.75A.42 1.75 0 0 0 0 1.75" stroke="#bfeff7" stroke-opacity=".35" stroke-width=".07"/><path d="M0 -1.95A.48 1.95 0 0 0 0 1.95" stroke="#bfeff7" stroke-opacity=".2" stroke-width=".05"/></g>`
+};
+const GRAD={mercury:'gMercury',venus:'gVenus',earth:'gEarth',mars:'gMars',jupiter:'gJupiter',saturn:'gSaturn',uranus:'gUranus',neptune:'gNeptune'};
+
+/* ====================== 小行星带 / 柯伊伯带（世界坐标，仅建一次） ====================== */
+const BELT_IN=63.2, BELT_OUT=74.0, BRK_IN=61.6, BRK_OUT=75.7;   // 压缩区（火星远日点 60.0 → 木星近日点 77.3）
+const beltR=a=>BELT_IN+(a-2.2)/1.1*(BELT_OUT-BELT_IN);
+const beltBins=[]; let kuiperG=null;
+function buildBelts(worldG){
+  const rng=rngFactory(20260926);
+  const belt=el('g',{id:'belt',class:'beltG'},worldG);
+  const KW=[2.502,2.825,2.958];
+  for(let b=0;b<11;b++){
+    const a0=2.2+b*0.1, g=el('g',{},belt); let d1='',d2='';
+    for(let i=0;i<78;i++){
+      const a=a0+rng()*0.1;
+      if(KW.some(k=>Math.abs(a-k)<0.022) && rng()<0.9) continue;   // 柯克伍德空隙
+      const th=rng()*TAU, r=beltR(a)+(rng()-.5)*0.9;
+      const s=`M${(r*Math.cos(th)).toFixed(2)} ${(r*Math.sin(th)).toFixed(2)}h.01`;
+      if(rng()<.82) d1+=s; else d2+=s;
+    }
+    el('path',{d:d1,stroke:'#9aa3b5','stroke-opacity':.55,'stroke-width':1.1,'stroke-linecap':'round','vector-effect':'non-scaling-stroke',fill:'none'},g);
+    el('path',{d:d2,stroke:'#d6cbb5','stroke-opacity':.8,'stroke-width':1.8,'stroke-linecap':'round','vector-effect':'non-scaling-stroke',fill:'none'},g);
+    beltBins.push({g,P:Math.pow(a0+0.05,1.5),ph:rng()*360});
+  }
+  kuiperG=el('g',{class:'beltG'},worldG); let d='';
+  for(let i=0;i<520;i++){
+    const u=rng(); const a= u<.25? 39.4+(rng()-.5)*1.2 : (u<.75? 42+rng()*6 : 30+rng()*20);
+    const th=rng()*TAU, r=a*K_OUT;
+    d+=`M${(r*Math.cos(th)).toFixed(1)} ${(r*Math.sin(th)).toFixed(1)}h.01`;
+  }
+  el('path',{d,stroke:'#8fa0c8','stroke-opacity':.35,'stroke-width':1.2,'stroke-linecap':'round','vector-effect':'non-scaling-stroke',fill:'none'},kuiperG);
+}
+
+/* ====================== 视图（主视图 + 内行星放大窗） ====================== */
+function makeView(svg,main){
+  const v={svg,main,z:1,tz:1,px:0,py:0,tpx:0,tpy:0,tilt:1,ttilt:1,cx:0,cy:0,s0:1,planets:{}};
+  if(main){
+    v.bgRect=el('rect',{fill:'url(#gSpace)'},svg);
+    v.neb=el('g',{},svg);
+    v.stars=el('g',{},svg);
+  }else{
+    el('rect',{width:262,height:262,fill:'#030615'},svg);
+  }
+  v.world=el('g',{},svg);
+  v.orbitsG=el('g',{},v.world);
+  v.brkG=el('g',{class:'brk'},v.world);
+  el('circle',{r:(BRK_IN+BRK_OUT)/2,fill:'none',stroke:'#ffb347','stroke-opacity':.045,'stroke-width':BRK_OUT-BRK_IN},v.brkG);
+  for(const r of [BRK_IN,BRK_OUT]) el('circle',{r,class:'orbit',stroke:'#ffb347','stroke-opacity':.5,'stroke-width':1,'stroke-dasharray':'2 5'},v.brkG);
+  if(main){ buildBelts(v.world); }
+  else { el('use',{href:'#belt',class:'beltG'},v.world); }
+  // 太阳
+  v.glow=el('circle',{r:1,fill:'url(#gSunGlow)',class:'sunPulse','pointer-events':'none'},svg);
+  v.sun=el('g',{'pointer-events':'none'},svg);
+  el('circle',{r:1.75,fill:'url(#gSunCorona)'},v.sun);
+  v.rays1=el('g',{},v.sun); v.rays2=el('g',{},v.sun);
+  const ray=(n,rin,rout,seed)=>{const rg=rngFactory(seed);let d='';for(let i=0;i<n;i++){const a=i/n*TAU+rg()*.2,w=.06+rg()*.06,ro=rout*(.75+rg()*.5);
+    d+=`M${Math.cos(a-w)*rin} ${Math.sin(a-w)*rin}L${Math.cos(a)*ro} ${Math.sin(a)*ro}L${Math.cos(a+w)*rin} ${Math.sin(a+w)*rin}Z`;}return d;};
+  el('path',{d:ray(18,.9,2.1,3),fill:'url(#gRays)',opacity:.55},v.rays1);
+  el('path',{d:ray(13,.9,1.7,9),fill:'url(#gRays)',opacity:.45},v.rays2);
+  el('circle',{r:1,fill:'url(#gSunCore)'},v.sun);
+  el('g',{fill:'#c0501a','fill-opacity':.28},v.sun).innerHTML='<circle cx="-.35" cy=".2" r=".07"/><circle cx="-.28" cy=".28" r=".045"/><circle cx=".3" cy="-.35" r=".05"/>';
+  v.planetG=el('g',{},svg);
+  v.overlay=el('g',{},svg);
+  v.labelG=el('g',{},svg);
+  v.sunLbl=el('text',{class:'lbl','text-anchor':'middle',fill:'#ffe2a8'},v.labelG); v.sunLbl.innerHTML='太阳 <tspan class="en">Sun</tspan>';
+  const list=main?PLANETS:PLANETS.filter(p=>p.grp==='in');
+  for(const p of list){
+    const o={};
+    o.orbit=el('ellipse',{class:'orbit',cx:-p.a*p.e*p.k,cy:0,rx:p.a*p.k,ry:p.a*p.k*Math.sqrt(1-p.e*p.e),transform:`rotate(${-p.w})`,
+      stroke:p.col,'stroke-opacity':.3,'stroke-width':1},v.orbitsG);
+    o.g=el('g',{class:'planet','data-id':p.id},v.planetG);
+    o.hit=el('circle',{r:14,fill:'transparent'},o.g);
+    o.sel=el('circle',{r:10,fill:'none',stroke:p.col,'stroke-width':1.5,'stroke-dasharray':'3 3',class:'selring',visibility:'hidden'},o.g);
+    o.body=el('g',{},o.g);
+    if(RING_BACK[p.id]) o.body.insertAdjacentHTML('beforeend',RING_BACK[p.id]);
+    el('circle',{r:1,fill:`url(#${GRAD[p.id]})`},o.body);
+    o.body.insertAdjacentHTML('beforeend',DECO[p.id]);
+    o.shade=el('g',{},o.body);
+    el('circle',{r:1.005,fill:'url(#gShade)'},o.shade);
+    el('circle',{r:1,fill:'url(#gSpec)'},o.shade);
+    if(RING_FRONT[p.id]) o.body.insertAdjacentHTML('beforeend',RING_FRONT[p.id]);
+    if(p.id==='earth'){
+      o.moonRing=el('circle',{r:10,fill:'none',stroke:'#cfd6e6','stroke-opacity':.18,'stroke-width':.8},o.g);
+      o.moon=el('circle',{r:1.2,fill:'url(#gMoon)'},o.g);
+    }
+    o.lbl=el('text',{class:'lbl',fill:p.col},v.labelG);
+    o.lbl.innerHTML=`${p.zh} <tspan class="en">${p.en}</tspan>`;
+    v.planets[p.id]=o;
+  }
+  // 近日点 / 远日点标记（选中行星时显示）
+  v.peri=el('g',{visibility:'hidden','pointer-events':'none'},v.overlay);
+  v.periDot=el('circle',{r:3,fill:'#fff'},v.peri); v.periT=el('text',{class:'lbl',fill:'#fff','font-size':11},v.peri);
+  v.aphDot=el('circle',{r:3,fill:'none',stroke:'#fff'},v.peri); v.aphT=el('text',{class:'lbl',fill:'#fff','font-size':11},v.peri);
+  if(main){
+    v.brkLbl=el('text',{class:'lbl brk',fill:'#ffc766','font-size':11.5},v.labelG);
+    v.brkLbl.innerHTML='⚡ 比例断层 <tspan class="en">小行星带（压缩区）</tspan>';
+    v.innerLbl=el('text',{class:'lbl',fill:'#cfd8f5','font-size':11,'text-anchor':'middle'},v.labelG);
+    v.innerLbl.textContent='▲ 内行星区：滚轮放大，或见左下放大窗';
+    v.kuiLbl=el('text',{class:'lbl beltG',fill:'#8fa0c8','font-size':11},v.labelG);
+    v.kuiLbl.innerHTML='柯伊伯带 <tspan class="en">Kuiper Belt 30–50 AU</tspan>';
+    v.eqx=el('g',{'pointer-events':'none'},v.overlay);
+    v.eqxLine=el('line',{stroke:'#8d99bb','stroke-opacity':.5,'stroke-dasharray':'4 4'},v.eqx);
+    v.eqxT=el('text',{class:'lbl',fill:'#8d99bb','font-size':10.5},v.eqx); v.eqxT.textContent='♈ 春分点方向 →';
+  }
+  return v;
+}
+
+const stage=$('stage'), insetSvg=$('inset');
+const MV=makeView(stage,true), IV=makeView(insetSvg,false);
+let selected=null, hovered=null, follow=false;
+let showLabels=true, showOrbits=true;
+
+/* 星空（随窗口重建，含闪烁） */
+function buildStars(W,H){
+  const rng=rngFactory(42); MV.stars.innerHTML=''; MV.neb.innerHTML='';
+  const neb=[['gNebA',.22,.3,.55,.28,-25],['gNebB',.8,.72,.6,.3,-25],['gNebC',.12,.85,.35,.2,10],['gNebB',.5,.5,1.0,.18,-28]];
+  for(const [g,x,y,rx,ry,rot] of neb) el('ellipse',{cx:x*W,cy:y*H,rx:rx*W,ry:ry*H,fill:`url(#${g})`,transform:`rotate(${rot} ${x*W} ${y*H})`},MV.neb);
+  const n=Math.round(W*H/3800); let dSmall='',dMid='';
+  const pad=80;
+  for(let i=0;i<n;i++){
+    const x=-pad+rng()*(W+2*pad), y=-pad+rng()*(H+2*pad), m=rng();
+    if(m<.7) dSmall+=`M${x.toFixed(1)} ${y.toFixed(1)}h.01`;
+    else if(m<.93) dMid+=`M${x.toFixed(1)} ${y.toFixed(1)}h.01`;
+    else{
+      const o=(.55+rng()*.45).toFixed(2), c=['#ffffff','#cfe0ff','#ffe9c8','#bcd4ff'][Math.floor(rng()*4)];
+      const s=el('circle',{cx:x.toFixed(1),cy:y.toFixed(1),r:(0.9+rng()*1.1).toFixed(2),fill:c,class:'tw'},MV.stars);
+      s.style.setProperty('--d',(2.5+rng()*4).toFixed(2)+'s'); s.style.setProperty('--dl',(-rng()*6).toFixed(2)+'s'); s.style.setProperty('--o',o);
+      s.setAttribute('opacity',o);
+    }
+  }
+  el('path',{d:dSmall,stroke:'#dfe6ff','stroke-opacity':.45,'stroke-width':1,'stroke-linecap':'round'},MV.stars);
+  el('path',{d:dMid,stroke:'#ffffff','stroke-opacity':.7,'stroke-width':1.6,'stroke-linecap':'round'},MV.stars);
+}
+
+const insetOn=()=>$('tInset').checked && getComputedStyle($('insetWrap')).display!=='none';
+function layout(){
+  const W=innerWidth,H=innerHeight;
+  stage.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  MV.bgRect.setAttribute('width',W);MV.bgRect.setAttribute('height',H);
+  const ctrlH=W<900?150:120;
+  MV.cx=W/2; MV.cy=Math.max(160,(H-ctrlH)/2+6);
+  const NEP_APH=30.07*(1+0.00859)*K_OUT;          // 海王星远日点（世界单位）
+  MV.s0=Math.max(.35,Math.min(W/2-24,(H-ctrlH)/2-12)/NEP_APH);
+  buildStars(W,H);
+  IV.cx=131; IV.cy=131; IV.s0=118/ (1.524*1.0934*K_IN+2);   // 放大窗：火星远日点贴边
+  if(innerHeight<820) $('legendDetails').open=false;
+}
+addEventListener('resize',layout);
+
+/* ====================== 时间与控制 ====================== */
+const yearsNow=()=>(Date.now()-J2000)/YEAR_MS;
+let simT=yearsNow(), t0=simT, playing=true, dir=1;
+const speedOf=v=>Math.pow(10,-3+v*0.05);   // 0.001 ~ 100 年/秒（对数）
+let speed=speedOf(+$('speed').value);
+function speedLabel(s){
+  const d=s*365.25;
+  if(d<1) return `${(d*24).toFixed(1)} 小时/秒`;
+  if(d<60) return `${d.toFixed(d<10?1:0)} 天/秒`;
+  return `${s.toFixed(s<10?2:1)} 年/秒`;
+}
+function updSpeed(){speed=speedOf(+$('speed').value);$('speedTxt').textContent=(dir<0?'−':'')+speedLabel(speed);}
+$('speed').addEventListener('input',updSpeed); updSpeed();
+function setPlay(p){playing=p;$('btnPlay').textContent=p?'❚❚ 暂停':'▶ 播放';}
+$('btnPlay').onclick=()=>setPlay(!playing);
+$('btnRev').onclick=()=>{dir=-dir;$('btnRev').classList.toggle('on',dir<0);updSpeed();};
+$('btnToday').onclick=()=>{simT=yearsNow();t0=simT;};
+$('tLabels').onchange=e=>{showLabels=e.target.checked;document.body.classList.toggle('noLabels',!showLabels);};
+$('tOrbits').onchange=e=>{showOrbits=e.target.checked;document.body.classList.toggle('noOrbits',!showOrbits);};
+$('tBelt').onchange=e=>document.body.classList.toggle('noBelt',!e.target.checked);
+$('tInset').onchange=e=>$('insetWrap').classList.toggle('hidden',!e.target.checked);
+$('tilt').oninput=e=>{MV.ttilt=Math.cos(+e.target.value*DEG);};
+function preset(z){MV.tz=z;MV.tpx=0;MV.tpy=0;follow=false;}
+$('vAll').onclick=()=>preset(1);
+$('vInner').onclick=()=>preset(Math.min(9,(Math.min(innerWidth,innerHeight-150)/2-30)/(62*MV.s0)));
+
+function fmtDate(t){
+  const d=new Date(J2000+t*YEAR_MS); const y=d.getUTCFullYear();
+  return `${y<0?'公元前'+(1-y):y} 年 ${d.getUTCMonth()+1} 月 ${d.getUTCDate()} 日`;
+}
+function fmtElapsed(dt){
+  const a=Math.abs(dt), s=dt<0?'−':'+';
+  if(a<1) return `${s}${(a*365.25).toFixed(0)} 天`;
+  return `${s}${a<100?a.toFixed(2):fmt(a,1)} 年`;
+}
+
+/* ====================== 交互：缩放 / 平移 / 选择 ====================== */
+const clampZ=z=>Math.max(.45,Math.min(40,z));
+function zoomAt(f,mx,my){
+  const nz=clampZ(MV.tz*f), r=nz/MV.tz;
+  const ox=mx-MV.cx, oy=my-MV.cy;
+  MV.tpx=ox-(ox-MV.tpx)*r; MV.tpy=oy-(oy-MV.tpy)*r; MV.tz=nz;
+}
+stage.addEventListener('wheel',e=>{e.preventDefault();zoomAt(Math.exp(-e.deltaY*0.0015),e.clientX,e.clientY);},{passive:false});
+const ptrs=new Map(); let drag=null, pinch=null;
+stage.addEventListener('pointerdown',e=>{
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size===2){const [a,b]=[...ptrs.values()];pinch={d:Math.hypot(a.x-b.x,a.y-b.y)};drag=null;return;}
+  if(e.target.closest('.planet'))return;
+  drag={x:e.clientX,y:e.clientY,px:MV.tpx,py:MV.tpy,moved:false};stage.setPointerCapture(e.pointerId);
+});
+stage.addEventListener('pointermove',e=>{
+  if(ptrs.has(e.pointerId))ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pinch&&ptrs.size===2){const [a,b]=[...ptrs.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);zoomAt(d/pinch.d,(a.x+b.x)/2,(a.y+b.y)/2);pinch.d=d;return;}
+  if(drag){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>3){drag.moved=true;follow=false;stage.classList.add('dragging');}
+    MV.tpx=drag.px+dx;MV.tpy=drag.py+dy;if(drag.moved){MV.px=MV.tpx;MV.py=MV.tpy;}}
+});
+const endPtr=e=>{ptrs.delete(e.pointerId);if(ptrs.size<2)pinch=null;drag=null;stage.classList.remove('dragging');};
+stage.addEventListener('pointerup',endPtr);stage.addEventListener('pointercancel',endPtr);
+stage.addEventListener('dblclick',e=>{if(!e.target.closest('.planet'))preset(1);});
+
+function bindPlanetEvents(svg){
+  svg.addEventListener('click',e=>{const g=e.target.closest('.planet');if(g)select(g.dataset.id);});
+  svg.addEventListener('pointerover',e=>{const g=e.target.closest('.planet');hovered=g?g.dataset.id:null;$('tip').classList.toggle('hidden',!hovered);});
+  svg.addEventListener('pointerleave',()=>{hovered=null;$('tip').classList.add('hidden');});
+  svg.addEventListener('pointermove',e=>{const t=$('tip');t.style.left=(e.clientX+14)+'px';t.style.top=(e.clientY+12)+'px';});
+}
+bindPlanetEvents(stage); bindPlanetEvents(insetSvg);
+insetSvg.addEventListener('click',e=>{if(!e.target.closest('.planet'))$('vInner').click();});
+
+/* 行星快捷按钮 */
+for(const p of PLANETS){const b=document.createElement('button');b.innerHTML=`<i style="background:${p.col}"></i>${p.zh}`;b.onclick=()=>select(p.id);$('chips').appendChild(b);}
+
+function select(id){
+  selected=id; const p=P_BY[id];
+  for(const V of [MV,IV]) for(const k in V.planets){V.planets[k].sel.setAttribute('visibility',k===id?'visible':'hidden');}
+  const peri=(p.a*(1-p.e)).toFixed(3), aph=(p.a*(1+p.e)).toFixed(3);
+  $('cardBody').innerHTML=`
+   <h2><span class="dot" style="background:${p.col};color:${p.col}"></span>${p.zh}<small>${p.en}</small></h2>
+   <div class="type">${p.type} · 图中位于${p.grp==='in'?'内组':'外组'}比例尺</div>
+   <table>
+    <tr><td>平均距日</td><td><b>${p.a.toFixed(3)} AU</b>（${fmt(p.a*149.598,1)} 百万 km）</td></tr>
+    <tr><td>当前距日</td><td><b id="cDist">—</b></td></tr>
+    <tr><td>近/远日点</td><td><b>${peri}</b> / <b>${aph}</b> AU</td></tr>
+    <tr><td>轨道偏心率</td><td><b>${p.e.toFixed(4)}</b></td></tr>
+    <tr><td>公转周期</td><td><b>${p.P} 年</b>（${fmt(p.days,p.days<1000?2:0)} 天）</td></tr>
+    <tr><td>公转进度</td><td><b id="cProg">—</b></td></tr>
+    <tr><td>自转周期</td><td><b>${p.rot}</b></td></tr>
+    <tr><td>赤道直径</td><td><b>${fmt(p.diam)} km</b>（地球的 ${(p.diam/12756).toFixed(p.diam<20000?3:2)} 倍）</td></tr>
+    <tr><td>质量</td><td><b>${p.mass}</b> 个地球</td></tr>
+    <tr><td>卫星数</td><td><b>${p.moons}</b> 颗${p.moons>2?'（已确认，截至 2026 年）':''}</td></tr>
+    <tr><td>自转轴倾角</td><td><b>${p.tilt}</b></td></tr>
+    <tr><td>平均温度</td><td><b>${p.temp}</b></td></tr>
+   </table>
+   <div class="fact">${p.fact}</div>
+   <div class="acts"><button id="cFollow" class="${follow?'on':''}">🎯 镜头跟随</button><button id="cFocus">🔍 放大到此</button></div>`;
+  $('card').classList.remove('hidden');
+  $('cFollow').onclick=()=>{follow=!follow;$('cFollow').classList.toggle('on',follow);};
+  $('cFocus').onclick=()=>{MV.tz=clampZ(p.grp==='in'?(p.id==='mercury'?14:7):(p.a<10?3:1.6));follow=true;$('cFollow').classList.add('on');};
+  lastCard=0;
+}
+function deselect(){selected=null;follow=false;$('card').classList.add('hidden');for(const V of [MV,IV])for(const k in V.planets)V.planets[k].sel.setAttribute('visibility','hidden');}
+$('cardClose').onclick=deselect;
+
+addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'&&e.target.type==='range'&&e.key.startsWith('Arrow'))return;
+  const k=e.key;
+  if(k===' '){e.preventDefault();setPlay(!playing);}
+  else if(k==='Escape')deselect();
+  else if(k==='+'||k==='=')zoomAt(1.25,MV.cx+MV.tpx,MV.cy+MV.tpy);
+  else if(k==='-'||k==='_')zoomAt(.8,MV.cx+MV.tpx,MV.cy+MV.tpy);
+  else if(k==='0')preset(1);
+  else if(k==='r'||k==='R')$('btnRev').click();
+  else if(k==='t'||k==='T')$('btnToday').click();
+  else if(k==='l'||k==='L')$('tLabels').click();
+  else if(k==='o'||k==='O')$('tOrbits').click();
+  else if(k>='1'&&k<='8')select(PLANETS[+k-1].id);
+});
+
+/* ====================== 每帧渲染 ====================== */
+let last=performance.now(), lastCard=0, lastHud=0, moonStep=0;
+function toScreen(V,wx,wy){return [V.cx+V.px+V.z*V.s0*wx, V.cy+V.py+V.z*V.s0*V.tilt*wy];}
+const cache={};
+function renderView(V,now,pos){
+  const sc=V.z*V.s0, main=V.main;
+  V.world.setAttribute('transform',`translate(${(V.cx+V.px).toFixed(2)},${(V.cy+V.py).toFixed(2)}) scale(${sc.toFixed(5)},${(sc*V.tilt).toFixed(5)})`);
+  // 太阳
+  const [sx,sy]=toScreen(V,0,0), sr=6.5*sc;
+  V.sun.setAttribute('transform',`translate(${sx.toFixed(2)},${sy.toFixed(2)}) scale(${sr.toFixed(3)})`);
+  V.glow.setAttribute('cx',sx);V.glow.setAttribute('cy',sy);V.glow.setAttribute('r',Math.min(sr*7,sr*1.5+260));
+  V.rays1.setAttribute('transform',`rotate(${(now*0.004)%360})`);V.rays2.setAttribute('transform',`rotate(${(-now*0.0027)%360})`);
+  V.sunLbl.setAttribute('visibility',main?'visible':'hidden');
+  V.sunLbl.setAttribute('x',sx);V.sunLbl.setAttribute('y',sy+sr*1.9+13);
+  const sizeK=main?Math.max(.7,V.s0)*Math.pow(V.z,.45):1.55;
+  const innerLabels=!main||sc>=2.0;
+  for(const id in V.planets){
+    const p=P_BY[id], o=V.planets[id], q=pos[id];
+    const [x,y]=toScreen(V,q.x*p.k,-q.y*p.k);
+    const R=p.R*sizeK;
+    o.g.setAttribute('transform',`translate(${x.toFixed(2)},${y.toFixed(2)})`);
+    o.body.setAttribute('transform',`scale(${R.toFixed(3)})`);
+    o.shade.setAttribute('transform',`rotate(${(Math.atan2(sy-y,sx-x)/DEG).toFixed(1)})`);
+    o.hit.setAttribute('r',Math.max(12,R*1.4));
+    o.sel.setAttribute('r',R*(id==='saturn'?2.4:1.35)+6);
+    const hl=id===selected||id===hovered;
+    o.orbit.setAttribute('stroke-opacity',hl?.85:(p.grp==='in'&&main&&sc<1.5?.45:.3));
+    o.orbit.setAttribute('stroke-width',hl?1.8:1);
+    if(o.moon){
+      const md=R*2.4+5, ma=TAU*simT/MOON_P;
+      const fast=moonStep>0.5;        // 高速时月球转动会产生频闪 → 以轨道环表示
+      const showMoon=!main||sc>=1.4;
+      o.moonRing.setAttribute('r',md);o.moonRing.setAttribute('visibility',showMoon?'visible':'hidden');
+      o.moonRing.setAttribute('stroke-opacity',fast?.45:.16);
+      o.moon.setAttribute('visibility',showMoon&&!fast?'visible':'hidden');
+      o.moon.setAttribute('cx',(md*Math.cos(ma)).toFixed(2));o.moon.setAttribute('cy',(-md*Math.sin(ma)).toFixed(2));
+      o.moon.setAttribute('r',Math.max(1.3,R*0.273));
+    }
+    const lv=p.grp==='out'||innerLabels;
+    o.lbl.setAttribute('visibility',lv?'visible':'hidden');
+    const off=R*(id==='saturn'?2.25:1)+6;
+    o.lbl.setAttribute('x',(x+off).toFixed(1));o.lbl.setAttribute('y',(y+4).toFixed(1));
+    if(!main) o.lbl.setAttribute('font-size',11);
+  }
+  // 近/远日点
+  if(selected&&V.planets[selected]){
+    const p=P_BY[selected], k=p.k, w=p.w*DEG;
+    const [px,py]=toScreen(V,p.a*(1-p.e)*k*Math.cos(w),-p.a*(1-p.e)*k*Math.sin(w));
+    const [ax,ay]=toScreen(V,-p.a*(1+p.e)*k*Math.cos(w),p.a*(1+p.e)*k*Math.sin(w));
+    V.periDot.setAttribute('cx',px);V.periDot.setAttribute('cy',py);V.periT.setAttribute('x',px+6);V.periT.setAttribute('y',py-6);V.periT.textContent='近日点';
+    V.aphDot.setAttribute('cx',ax);V.aphDot.setAttribute('cy',ay);V.aphT.setAttribute('x',ax+6);V.aphT.setAttribute('y',ay-6);V.aphT.textContent='远日点';
+    V.peri.setAttribute('visibility',showOrbits&&(main?(p.grp==='out'||sc>=2):true)?'visible':'hidden');
+  }else V.peri.setAttribute('visibility','hidden');
+  if(main){
+    const a=132*DEG, rr=BRK_OUT+3;
+    const [bx,by]=toScreen(V,rr*Math.cos(a),-rr*Math.sin(a));
+    V.brkLbl.setAttribute('text-anchor','end');V.brkLbl.setAttribute('x',bx-4);V.brkLbl.setAttribute('y',by);
+    const [ix,iy]=toScreen(V,0,BRK_OUT+16);
+    V.innerLbl.setAttribute('x',ix);V.innerLbl.setAttribute('y',iy);V.innerLbl.setAttribute('visibility',innerLabels?'hidden':'visible');
+    const ka=-35*DEG, kr=31.5*K_OUT; const [kx,ky]=toScreen(V,kr*Math.cos(ka),-kr*Math.sin(ka));
+    V.kuiLbl.setAttribute('x',kx);V.kuiLbl.setAttribute('y',ky);
+    const [e1x,e1y]=toScreen(V,31.2*K_OUT,0),[e2x,e2y]=toScreen(V,34*K_OUT,0);
+    V.eqxLine.setAttribute('x1',e1x);V.eqxLine.setAttribute('y1',e1y);V.eqxLine.setAttribute('x2',e2x);V.eqxLine.setAttribute('y2',e2y);
+    V.eqxT.setAttribute('x',e1x+4);V.eqxT.setAttribute('y',e1y-6);
+  }
+}
+
+function frame(now){
+  const dt=Math.min(.1,(now-last)/1000); last=now;
+  const step=playing?dir*speed*dt:0; simT+=step;
+  moonStep=Math.abs(TAU*step/MOON_P);
+  // 相机缓动
+  const f=1-Math.exp(-dt*9);
+  if(follow&&selected){
+    const p=P_BY[selected], q=kepler(p,simT), sc=MV.tz*MV.s0;
+    MV.tpx=-sc*q.x*p.k; MV.tpy=sc*MV.ttilt*q.y*p.k;
+  }
+  MV.z+=(MV.tz-MV.z)*f; MV.px+=(MV.tpx-MV.px)*f; MV.py+=(MV.tpy-MV.py)*f; MV.tilt+=(MV.ttilt-MV.tilt)*f;
+  if(Math.abs(MV.tz-MV.z)<1e-4)MV.z=MV.tz;
+  MV.stars.setAttribute('transform',`translate(${(MV.px*.03).toFixed(1)},${(MV.py*.03).toFixed(1)})`);
+  // 位置
+  const pos={}; for(const p of PLANETS)pos[p.id]=kepler(p,simT);
+  for(const b of beltBins) b.g.setAttribute('transform',`rotate(${(-(b.ph+360*simT/b.P))%360})`);
+  kuiperG.setAttribute('transform',`rotate(${(-360*simT/272)%360})`);
+  renderView(MV,now,pos);
+  if(insetOn()) renderView(IV,now,pos);
+  // HUD（节流）
+  if(now-lastHud>90){
+    lastHud=now;
+    $('date').textContent=fmtDate(simT);
+    $('elapsed').textContent=fmtElapsed(simT-t0);
+    $('orbits').textContent=fmt(Math.floor(Math.abs(simT-t0)));
+    const u=MV.z*MV.s0;
+    $('barIn').style.width=Math.min(170,K_IN*u)+'px';
+    $('barOut').style.width=Math.min(170,10*K_OUT*u)+'px';
+    $('zoomTxt').textContent=`缩放 ×${MV.z.toFixed(2)}${K_IN*u>170?'（1 AU 超出显示）':''}`;
+    $('insetZoom').textContent=`×${(IV.s0/(MV.z*MV.s0)).toFixed(1)}`;
+    if(hovered){const p=P_BY[hovered];$('tip').innerHTML=`<b style="color:${p.col}">${p.zh}</b> ${p.en} · 距日 ${pos[hovered].r.toFixed(3)} AU · 点击查看`;}
+  }
+  if(selected&&now-lastCard>120){
+    lastCard=now; const p=P_BY[selected], q=pos[selected];
+    const cd=$('cDist'); if(cd) cd.textContent=`${q.r.toFixed(4)} AU（${fmt(q.r*149.598,1)} 百万 km）`;
+    let M=((p.L0-p.w)+360*simT/p.P)%360; if(M<0)M+=360;
+    const cp=$('cProg'); if(cp) cp.textContent=`${(M/3.6).toFixed(1)}%（自近日点起）`;
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ====================== 比例自检（读取实际绘制的轨道半长轴） ====================== */
+function verify(){
+  const rx=id=>+MV.planets[id].orbit.getAttribute('rx');
+  const e=rx('earth'), j=rx('jupiter');
+  const inn=['mercury','venus','earth','mars'].map(id=>(rx(id)/e).toFixed(3)).join(' : ');
+  const out=['jupiter','saturn','uranus','neptune'].map(id=>(rx(id)/j*5.203).toFixed(3)).join(' : ');
+  $('kRatio').textContent=(K_IN/K_OUT).toFixed(2);
+  $('verify').innerHTML=`✓ 实测图中半长轴比（读取 SVG 属性）<br>内组 水:金:地:火 = ${inn}<br>外组 木:土:天:海 = ${out}<br>火星远日点 ${(1.524*1.0934*K_IN).toFixed(1)} &lt; 断层 &lt; 木星近日点 ${(5.203*(1-.04839)*K_OUT).toFixed(1)}（世界单位）`;
+  console.log('[verify] inner',inn,'| outer',out,'| K_IN/K_OUT',(K_IN/K_OUT).toFixed(4));
+}
+
+layout(); verify();
+requestAnimationFrame(t=>{last=t;frame(t);});
+</script>
+</body>
+</html>
