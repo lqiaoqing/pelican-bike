@@ -72,6 +72,40 @@ const endPtr = e => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch0 = 0; }
 svg.addEventListener('pointerup', endPtr); svg.addEventListener('pointercancel', endPtr);
 svg.addEventListener('pointerleave', () => $('tip').classList.remove('show'));
 svg.addEventListener('dblclick', () => actions.view());
+// ===== 稳健性 =====
+// 任何写进 SVG 属性的 NaN / Infinity 都会让 Chromium 把整组（例如骑手）算成无效包围盒而整帧不画 → 直接丢弃这类写入
+{
+  const sa = Element.prototype.setAttribute, bad = /NaN|Infinity/;
+  Element.prototype.setAttribute = function (k, v) { if (typeof v === 'number' ? !isFinite(v) : bad.test(v)) return; return sa.call(this, k, v); };
+}
+// 精简渲染（?lite=1 强制开启，?lite=0 强制关闭；微信/XWEB 与触屏手机自动开启）：
+// 去掉所有 SVG 滤镜、mix-blend-mode、clip-path —— 这些在安卓 Chromium（高 DPR、GPU 光栅化）上最容易导致局部整组不绘制/闪烁
+const LITE = Q.get('lite') === '1' || (Q.get('lite') !== '0' && (/MicroMessenger|XWEB|MMWEBSDK/i.test(navigator.userAgent) ||
+  (matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) < 820)));
+function applyLite() {
+  document.documentElement.classList.add('lite');
+  svg.querySelectorAll('[filter]').forEach(e => e.removeAttribute('filter'));
+  svg.querySelectorAll('[clip-path]').forEach(e => e.removeAttribute('clip-path'));
+  svg.querySelectorAll('[style]').forEach(e => { if (e.style.mixBlendMode) e.style.mixBlendMode = ''; if (e.style.filter) e.style.filter = ''; });
+  headBeam.setAttribute('opacity', '.55'); pouchFishEl.style.opacity = '.55';
+}
+if (LITE) applyLite();
+// 透明度为 0 的特效层直接 display:none（视觉完全相同，但不参与绘制/合成）
+const fxLayers = [L.stars, L.lights, L.rainL, L.leaves, L.speed, L.dust, L.splash, nightShade, stormShade];
+function hideIdle() {
+  for (const e of fxLayers) {
+    const o = e.style.opacity !== '' ? +e.style.opacity : +(e.getAttribute('opacity') ?? 1);
+    const d = o < .005 ? 'none' : ''; if (e.style.display !== d) e.style.display = d;
+  }
+}
+// 状态自检：任何物理/动画量变成非有限数时复位（防止弹簧/IK 在异常帧间隔后发散）
+function sanitizeState() {
+  const keys = ['v', 'crank', 'crankW', 'wheelR', 'wheelF', 'cogAng', 'chainPos', 'scroll', 'dist', 'cogR', 'lean', 'bob', 'accel', 'mouth', 'pouchD', 'pouchV', 'leanDraw', 'headAngDeg', 'headAng', 'prevAccel'];
+  let bad = false;
+  for (const k of keys) if (S[k] !== undefined && !isFinite(S[k])) { bad = true; S[k] = k === 'cogR' ? CASSETTE[S.gear] * TOOTH_R : k === 'pouchD' ? 12 : k === 'headAngDeg' ? 12 : 0; }
+  if (S.head && !(isFinite(S.head.x) && isFinite(S.head.y) && isFinite(S.headV.x) && isFinite(S.headV.y))) { S.head = null; S.headV = P(0, 0); bad = true; }
+  return bad;
+}
 // ===== 布局与取景 =====
 // .mob  = 手机竖屏 / 窄竖屏：顶部紧凑 HUD + 底部可折叠控制台
 // .short = 横屏但很矮（手机横屏）：HUD 缩小、控制台默认折叠
@@ -80,11 +114,12 @@ const RB = { cx: 750, cy: 537, w: 600, h: 520 };   // 骑手（含车、喙、�
 let vb = { x: 0, y: 0, w: 1600, h: 900 }, portrait = false, layoutMode = null, vbAnim = 0;
 const camC = () => portrait ? P(vb.x + vb.w / 2, RB.cy) : P(800, 520);
 function setVB(v) { vb = v; svg.setAttribute('viewBox', `${f1(v.x)} ${f1(v.y)} ${f1(v.w)} ${f1(v.h)}`); }
+function setVar(k, v) { const st = document.documentElement.style; if (st.getPropertyValue(k) !== v) st.setProperty(k, v); }
 function applyLayoutClass() {
   const W = innerWidth, H = innerHeight, asp = W / H, root = document.documentElement;
   const mob = asp < 1 || (W <= 760 && asp < 1.25), short = !mob && H <= 500, mode = mob ? 'mob' : short ? 'short' : 'desk';
   root.classList.toggle('mob', mob); root.classList.toggle('short', short);
-  root.style.setProperty('--vh', H + 'px');
+  setVar('--vh', H + 'px');
   if (mode !== layoutMode) {   // 进入手机布局时默认折叠控制台；回到桌面布局时恢复展开
     if (layoutMode !== null || mode !== 'desk') setFold(mode !== 'desk' || Q.get('panel') === '0');
     layoutMode = mode;
@@ -106,22 +141,26 @@ function layoutLabels(mob, v, s, top, bot) {
     });
   });
 }
+let lastFit = '';
 function fitAspect(animate) {
   const W = innerWidth, H = innerHeight; if (!W || !H) return;
   const mob = applyLayoutClass(), asp = W / H;
   portrait = asp < 1.25;
   let t, top = 0, bot = H;
-  if (!portrait) { t = { x: 0, y: 0, w: 1600, h: 900 }; svg.setAttribute('preserveAspectRatio', 'xMidYMid slice'); }
+  if (!portrait) { lastFit = ''; t = { x: 0, y: 0, w: 1600, h: 900 }; svg.setAttribute('preserveAspectRatio', 'xMidYMid slice'); }
   else {
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
     if (mob) { top = $('hud').getBoundingClientRect().bottom + 4; bot = $('panel').getBoundingClientRect().top - 4; }
     const lab = S.labels && mob ? labelBand() : 0;
+    // 幂等：尺寸、布局、折叠、标注都没变就什么也不做（微信会反复触发 resize / visualViewport 事件）
+    const sig = [W, H, top | 0, bot | 0, lab].join();
+    if (sig === lastFit) return; lastFit = sig;
     const avail = Math.max(100, bot - top - 2 * lab);
     const s = Math.min(W / (asp < .8 ? 640 : 1200), avail / RB.h, W / RB.w);
     const vw = W / s, vh = H / s, mid = top + lab + avail / 2;
     t = { x: RB.cx - vw / 2, y: RB.cy - mid / s, w: vw, h: vh };
   }
-  document.documentElement.style.setProperty('--bandTop', f1(top) + 'px');
+  setVar('--bandTop', f1(top) + 'px');
   layoutLabels(portrait && mob, t, W / t.w, top, bot);
   cancelAnimationFrame(vbAnim);
   const from = vb, sameAsp = Math.abs(from.w / from.h - t.w / t.h) < .01;
@@ -135,8 +174,8 @@ function fitAspect(animate) {
   vbAnim = requestAnimationFrame(tick);
 }
 // 旋转 / 窗口变化：微信等内置浏览器在 orientationchange 后尺寸会延迟更新，所以多补几次
-let fitTimer = 0;
-const refit = () => { fitAspect(false); clearTimeout(fitTimer); fitTimer = setTimeout(() => { fitAspect(false); fitTimer = setTimeout(() => fitAspect(false), 400); }, 120); };
+let fitTimer = 0, fitTimer2 = 0;
+const refit = () => { clearTimeout(fitTimer); clearTimeout(fitTimer2); fitTimer = setTimeout(() => fitAspect(false), 60); fitTimer2 = setTimeout(() => fitAspect(false), 450); };
 addEventListener('resize', refit); addEventListener('orientationchange', refit);
 if (window.visualViewport) visualViewport.addEventListener('resize', refit);
 addEventListener('pageshow', refit);
@@ -232,8 +271,8 @@ function render(dt, rdt) {
   stormClouds.setAttribute('opacity', f1(RN * 100) / 100);
   for (let i = 0; i < 7; i++) clouds[i].g.style.opacity = 1 - RN * .6;
   setT(sunRays, `rotate(${f1(t * 4)})`);
-  nightShade.setAttribute('opacity', f1(N * 100) / 100);
-  stormShade.setAttribute('opacity', f1(RN * .32 * 100) / 100);
+  nightShade.setAttribute('opacity', f1(N * (LITE ? 78 : 100)) / 100);          // 精简模式无 multiply，用普通叠加略减弱
+  stormShade.setAttribute('opacity', f1(RN * (LITE ? .2 : .32) * 100) / 100);
   L.lights.style.opacity = N;
   roadWet.setAttribute('opacity', f1(RN * .35 * 100) / 100);
   puddleTile.g.style.opacity = RN;
@@ -262,27 +301,3 @@ function render(dt, rdt) {
     const fl = Math.sin(gl.ph), w = 16;
     gl.p.setAttribute('d', `M${-w} ${f1(-fl * 8 - 2)} Q${-w / 2} ${f1(-fl * 10 - 7)} 0 0 Q${w / 2} ${f1(-fl * 10 - 7)} ${w} ${f1(-fl * 8 - 2)}`);
     setT(gl.g, `translate(${f1(gl.x)},${f1(gl.y + Math.sin(gl.ph * .2) * 6)}) scale(${gl.vx < 0 ? gl.s : -gl.s},${gl.s})`);
-  }
-  // 帆船
-  for (const b of boats) {
-    b.x -= (S.v * PX_PER_M * .1 + b.sp * (1 + WD)) * dt;
-    if (b.x < -120) b.x = 1750;
-    setT(b.g, `translate(${f1(b.x)},${f1(b.y + Math.sin(t * 1.4 + b.ph) * 1.5)})`);
-    setT(b.inner, `rotate(${f1(Math.sin(t * 1.1 + b.ph) * (2 + WD * 5))})`);
-  }
-  // 棕榈摇曳
-  for (const p of palms) setT(p.fr, `rotate(${f1(Math.sin(t * (1.2 + WD) + p.ph) * (2 + WD * 7) - WD * 6)})`);
-  // 螃蟹横着走
-  for (const c of crabs) {
-    c.ph += dt * 7; c.ox += c.dir * 22 * dt; if (Math.abs(c.ox) > 60) c.dir *= -1;
-    setT(c.crab.c, `translate(${f1(c.ox)},${f1(c.y)})`);
-    c.crab.legs.forEach((lg, i) => {
-      const side = i < 3 ? -1 : 1, k = i % 3, sw = Math.sin(c.ph + k * 2 + (side > 0 ? 1 : 0)) * 3;
-      lg.setAttribute('d', `M${side * 7} ${-2 + k * 1.5} q${side * 7} ${-6 + sw} ${side * (12 + k * 1.5)} ${4 + k}`);
-    });
-  }
-  // 灯塔光束（伪 3D：旋转光束投影成左右伸缩的光柱）
-  const hl = headland.items[0];
-  const lx = hl.sx + 20, ly = HORIZON - 62 - 87;
-  setT(lhLight, `translate(${f1(lx)},${f1(ly)})`);
-  const ph = t * 1.3, c = Math.cos(ph), len = 900 * Math.abs(c) + 40, dir = c > 0 ? 1 : -1, spread = 14 + 30 * (1 - Math.abs(c));
