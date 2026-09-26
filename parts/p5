@@ -1,0 +1,256 @@
+// 以“仿真时间”调度的延时任务（暂停/慢动作时同样生效）
+const tasks = [];
+function later(sec, fn) { const t = { at: S.t + sec, fn }; tasks.push(t); return t; }
+function runTasks() { for (let i = tasks.length - 1; i >= 0; i--) if (S.t >= tasks[i].at) { const t = tasks.splice(i, 1)[0]; t.fn(); } }
+function cancel(t) { const i = tasks.indexOf(t); if (i >= 0) tasks.splice(i, 1); }
+function flyTo(svgStr, from, toFn, dur, arc, s0, s1, onDone) {
+  const e = html(L.fly, `<g>${svgStr}</g>`);
+  flyers.push({ e, from, toFn, dur, arc, s0, s1, t: 0, onDone });
+}
+let busy = false;
+function catchFish(f) {
+  if (f.state !== 'jump' || busy) { if (busy) bubble('嘴里还有一条呢～'); return; }
+  busy = true;
+  const pos = f.pos;
+  f.state = 'idle'; f.g.style.display = 'none';
+  S.mouthTarget = 1; sfx.squawk(.6);
+  flyTo(fishSVG(1, false), pos, billTip, .75, -120, f.sc, 1.1, () => {
+    S.pouchFish = 1; S.pouchV += 60; S.fishCaught++; sfx.gulp();
+    bubble(['抓到啦！', '好大一条！', '嘎～鲜！', '接得漂亮！'][S.fishCaught % 4]);
+    later(1.4, () => {           // 1.4s 后吐进车筐
+      S.mouthTarget = 1;
+      later(.18, () => {
+        S.pouchFish = 0;
+        flyTo(fishSVG(1, false), billTip(), () => P(944, 492), .55, -40, 1.1, .95, () => { S.basketFish++; renderBasketFish(); busy = false; S.mouthTarget = 0; });
+      });
+    });
+  });
+}
+function billTip() { return headXf(P(172, 10)); }
+function autoCatch() {
+  const live = fishes.filter(f => f.state === 'jump');
+  if (live.length) { catchFish(live[0]); return; }
+  const f = fishes.find(f => f.state === 'idle');
+  if (!f) return;
+  launchFish(f, rand(950, 1250)); f.dur = 1.3;
+  later(.42, () => catchFish(f));
+}
+function pokePelican() {
+  sfx.squawk(1); S.mouthTarget = 1; S.pouchV += 30;
+  cancel(pokePelican.tm);
+  if (S.basketFish > 0 && !busy) {
+    busy = true;
+    S.basketFish--; renderBasketFish();
+    flyTo(fishSVG(.95, false), P(944, 488), billTip, .55, -90, .95, 1, () => {
+      S.pouchFish = 1; S.pouchV += 50; sfx.gulp(); S.eaten++;
+      bubble(['真香！', '嘎嘎，好吃～', '再来一条！', '吃饱才有力气骑车'][S.eaten % 4]);
+      later(.7, () => { S.pouchFish = 0; S.mouthTarget = 0; busy = false; });
+    });
+  } else {
+    bubble(S.basketFish > 0 ? '嘎！' : ['嘎！车筐空啦', '去水里抓条鱼吧（点跳出的鱼）', '嘎嘎～', '风好舒服！'][Math.floor(Math.random() * 4)]);
+    pokePelican.tm = later(.65, () => { if (!busy) S.mouthTarget = 0; });
+  }
+}
+
+/* ---------------- 对话气泡 ---------------- */
+const bub = g(L.bubble, { opacity: 0 });
+const bubRect = el('rect', { rx: 12, fill: '#fff', stroke: '#1d2939', 'stroke-width': 1.5 }, bub);
+const bubTail = el('path', { fill: '#fff', stroke: '#1d2939', 'stroke-width': 1.5 }, bub);
+const bubText = el('text', { 'font-size': 17, 'font-weight': 700, fill: '#1d2939', 'text-anchor': 'middle' }, bub);
+let bubLife = 0;
+function bubble(txt) {
+  bubText.textContent = txt;
+  const w = Math.max(60, [...txt].reduce((s, c) => s + (c.charCodeAt(0) > 255 ? 17 : 9.5), 0) + 26);
+  bubRect.setAttribute('x', -w / 2); bubRect.setAttribute('y', -20); bubRect.setAttribute('width', w); bubRect.setAttribute('height', 36);
+  bubText.setAttribute('y', 5);
+  bubTail.setAttribute('d', `M-10 15 L-22 34 L4 15`);
+  bubLife = 2.4;
+}
+
+/* =====================================================================
+ *  声音（WebAudio 合成，无音频文件）
+ * ===================================================================== */
+let AC = null, master = null, amb = null;
+function audio() {
+  if (!AC) {
+    try {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      master = AC.createGain(); master.gain.value = .7; master.connect(AC.destination);
+      // 环境声：噪声 → 雨（低通）/ 风（带通），以及飞轮棘爪嗡声
+      const buf = AC.createBuffer(1, AC.sampleRate * 2, AC.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      const src = AC.createBufferSource(); src.buffer = buf; src.loop = true;
+      const lp = AC.createBiquadFilter(); lp.type = 'highpass'; lp.frequency.value = 900;
+      const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 420; bp.Q.value = .6;
+      const gR = AC.createGain(), gW = AC.createGain(); gR.gain.value = 0; gW.gain.value = 0;
+      src.connect(lp).connect(gR).connect(master); src.connect(bp).connect(gW).connect(master); src.start();
+      const fw = AC.createOscillator(); fw.type = 'square'; fw.frequency.value = 40;
+      const fwHp = AC.createBiquadFilter(); fwHp.type = 'highpass'; fwHp.frequency.value = 2500;
+      const gF = AC.createGain(); gF.gain.value = 0; fw.connect(fwHp).connect(gF).connect(master); fw.start();
+      amb = { gR, gW, gF, fw, bp };
+    } catch (e) { AC = null; }
+  }
+  if (AC && AC.state === 'suspended') AC.resume();
+  return AC;
+}
+function env(gn, t, a, peak, dec) { gn.gain.setValueAtTime(0.0001, t); gn.gain.exponentialRampToValueAtTime(peak, t + a); gn.gain.exponentialRampToValueAtTime(0.0001, t + a + dec); }
+const sfx = {
+  ding() {
+    const ac = audio(); if (!ac || !S.sound) return; const t = ac.currentTime;
+    [0, .17].forEach((dl, k) => [[2640, .35], [2640 * 2.74, .12], [2640 * 5.2, .05], [1320, .06]].forEach(([fq, a]) => {
+      const o = ac.createOscillator(), gn = ac.createGain(); o.frequency.value = fq * (k ? 1.003 : 1); env(gn, t + dl, .003, a, 1.3 - k * .2);
+      o.connect(gn).connect(master); o.start(t + dl); o.stop(t + dl + 1.5);
+    }));
+  },
+  squawk(v = 1) {
+    const ac = audio(); if (!ac || !S.sound) return; const t = ac.currentTime;
+    [0, .22].forEach((dl, k) => {
+      const o = ac.createOscillator(), lfo = ac.createOscillator(), lg = ac.createGain(), f = ac.createBiquadFilter(), gn = ac.createGain();
+      o.type = 'sawtooth'; o.frequency.setValueAtTime(k ? 300 : 250, t + dl); o.frequency.exponentialRampToValueAtTime(k ? 170 : 150, t + dl + .2);
+      lfo.frequency.value = 32; lg.gain.value = 40; lfo.connect(lg).connect(o.frequency);
+      f.type = 'bandpass'; f.frequency.value = 1100; f.Q.value = 1.4;
+      env(gn, t + dl, .02, .32 * v, .2);
+      o.connect(f).connect(gn).connect(master); o.start(t + dl); lfo.start(t + dl); o.stop(t + dl + .3); lfo.stop(t + dl + .3);
+    });
+  },
+  gulp() {
+    const ac = audio(); if (!ac || !S.sound) return; const t = ac.currentTime;
+    const o = ac.createOscillator(), gn = ac.createGain(); o.frequency.setValueAtTime(220, t); o.frequency.exponentialRampToValueAtTime(70, t + .18);
+    env(gn, t, .01, .4, .2); o.connect(gn).connect(master); o.start(t); o.stop(t + .3);
+  },
+  splash(v = 1) {
+    const ac = AC; if (!ac || !S.sound || ac.state !== 'running') return; const t = ac.currentTime;
+    const buf = ac.createBuffer(1, ac.sampleRate * .3, ac.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
+    const s = ac.createBufferSource(), f = ac.createBiquadFilter(), gn = ac.createGain(); s.buffer = buf; f.type = 'bandpass'; f.frequency.value = 1400; gn.gain.value = .12 * v;
+    s.connect(f).connect(gn).connect(master); s.start(t);
+  },
+  skid() {
+    const ac = audio(); if (!ac || !S.sound) return; const t = ac.currentTime;
+    const buf = ac.createBuffer(1, ac.sampleRate * .6, ac.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+    const s = ac.createBufferSource(), f = ac.createBiquadFilter(), gn = ac.createGain(); s.buffer = buf; f.type = 'bandpass'; f.frequency.value = 2600; f.Q.value = 3; gn.gain.value = .12;
+    s.connect(f).connect(gn).connect(master); s.start(t);
+  },
+};
+function updateAmbient() {
+  if (!amb || !AC) return;
+  const on = S.sound && !S.paused ? 1 : 0, t = AC.currentTime;
+  amb.gR.gain.setTargetAtTime(on * S.rainT * .09, t, .3);
+  amb.gW.gain.setTargetAtTime(on * (S.windT * .1 + Math.min(S.v, 12) * .004), t, .3);
+  amb.bp.frequency.setTargetAtTime(300 + S.v * 30 + S.windT * 200, t, .3);
+  const coast = !S.pedaling && S.v > .6 && !S.skidding;
+  const rate = coast ? (S.v * PX_PER_M / WR - S.crankW * CR_R / S.cogR) / TAU * 18 : 0;
+  amb.fw.frequency.setTargetAtTime(Math.max(20, rate), t, .05);
+  amb.gF.gain.setTargetAtTime(on * (coast ? .05 : 0), t, .08);
+}
+
+/* =====================================================================
+ *  结构标注
+ * ===================================================================== */
+const labelDefs = [];
+function defLabel(text, color, lx, ly, anchor) { labelDefs.push({ text, color, lx, ly, anchor }); }
+const LB = '#e8553d', LP = '#159a93';
+let cur = {};   // 每帧计算的动态锚点
+defLabel('冠羽', LP, 712, 290, () => cur.crest);
+defLabel('眼圈（粉色裸皮）', LP, 850, 256, () => cur.eye);
+defLabel('上喙', LP, 978, 298, () => cur.billMid);
+defLabel('喙钩', LP, 1075, 350, () => cur.hook);
+defLabel('喉囊', LP, 990, 425, () => cur.pouch);
+defLabel('S 形长颈', LP, 690, 352, () => cur.neckMid);
+defLabel('覆羽', LP, 648, 425, () => cur.coverts);
+defLabel('尾羽', LP, 505, 455, () => P(572, 486));
+defLabel('次级飞羽（黑）', LP, 540, 515, () => cur.secondary);
+defLabel('初级飞羽握把', LP, 833, 452, () => cur.primary);
+defLabel('胫（覆羽）', LP, 545, 556, () => cur.thigh);
+defLabel('踝关节（向后弯）', LP, 460, 600, () => cur.ankle);
+defLabel('全蹼足', LP, 640, 872, () => cur.foot);
+defLabel('车铃', LB, 936, 458, () => GEO.BELL);
+defLabel('车筐 · 鱼', LB, 1068, 505, () => P(992, 520));
+defLabel('前灯', LB, 1068, 553, () => P(1006, 548));
+defLabel('碗组 / 车头管', LB, 985, 598, () => P(870, 566));
+defLabel('前叉（带前倾）', LB, 1062, 648, () => P(898, 640));
+defLabel('花鼓 · 辐条', LB, 1062, 700, () => P(GEO.FW.x + 30, GEO.FW.y + 24));
+defLabel('气门芯', LB, 1062, 748, () => cur.valve);
+defLabel('上管', LB, 770, 572, () => P(800, 549));
+defLabel('下管', LB, 830, 728, () => P(772, 652));
+defLabel('牙盘 44T', LB, 850, 790, () => P(GEO.BB.x + 26, GEO.BB.y + 16));
+defLabel('曲柄 · 脚踏', LB, 760, 850, () => cur.pedal);
+defLabel('链条', LB, 590, 808, () => P(645, 719));
+defLabel('飞轮 · 后拨', LB, 455, 760, () => P(GEO.RW.x + 4, GEO.RW.y + 26));
+defLabel('后上叉 / 后下叉', LB, 450, 660, () => P(626, 626));
+defLabel('立管 · 座管', LB, 600, 612, () => P(694, 612));
+const labelEls = labelDefs.map(d => {
+  const gg = g(L.labels);
+  const line = el('path', { fill: 'none', stroke: d.color, 'stroke-width': 1.4, opacity: .9 }, gg);
+  const dot = el('circle', { r: 3.2, fill: '#fff', stroke: d.color, 'stroke-width': 1.6 }, gg);
+  const w = [...d.text].reduce((s, c) => s + (c.charCodeAt(0) > 255 ? 13 : 7.4), 0) + 18;
+  const box = g(gg, { transform: `translate(${d.lx},${d.ly})` });
+  el('rect', { x: -w / 2, y: -12, width: w, height: 24, rx: 7, fill: 'rgba(255,255,255,.93)', stroke: d.color, 'stroke-width': 1.3 }, box);
+  el('rect', { x: -w / 2, y: -12, width: 4, height: 24, rx: 2, fill: d.color }, box);
+  const tx = el('text', { x: 2, y: 4.5, 'font-size': 13, 'font-weight': 700, fill: '#1d2939', 'text-anchor': 'middle' }, box);
+  tx.textContent = d.text;
+  return { d, line, dot, w };
+});
+L.labels.style.display = 'none';
+function updateLabels() {
+  for (const o of labelEls) {
+    const a = o.d.anchor(); if (!a) continue;
+    const lx = o.d.lx, ly = o.d.ly;
+    const ex = clamp(a.x, lx - o.w / 2, lx + o.w / 2), ey = a.y < ly ? ly - 12 : ly + 12;
+    const bx = Math.abs(a.x - lx) > o.w / 2 ? (a.x < lx ? lx - o.w / 2 : lx + o.w / 2) : ex;
+    const by = Math.abs(a.x - lx) > o.w / 2 ? ly : ey;
+    o.line.setAttribute('d', `M${f1(a.x)} ${f1(a.y)}L${f1(bx)} ${f1(by)}`);
+    o.dot.setAttribute('cx', f1(a.x)); o.dot.setAttribute('cy', f1(a.y));
+  }
+}
+
+/* =====================================================================
+ *  HUD 仪表 & 控制面板
+ * ===================================================================== */
+const gauge = $('gauge');
+const GA0 = -225, GA1 = 45, GMAX = 50;
+{
+  let s = `<circle cx="60" cy="60" r="56" fill="#13263d"/><circle cx="60" cy="60" r="56" fill="none" stroke="#2c4868" stroke-width="2"/>`;
+  const arc = (r, a0, a1) => { const p = a => [60 + Math.cos(a * D2R) * r, 60 + Math.sin(a * D2R) * r]; const [x0, y0] = p(a0), [x1, y1] = p(a1); return `M${f1(x0)} ${f1(y0)}A${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${f1(x1)} ${f1(y1)}`; };
+  s += `<path d="${arc(46, GA0, GA1)}" fill="none" stroke="#24405f" stroke-width="7" stroke-linecap="round"/>`;
+  s += `<path id="gArc" d="${arc(46, GA0, GA1)}" fill="none" stroke="url(#gaugeGrad)" stroke-width="7" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100"/>`;
+  for (let v = 0; v <= GMAX; v += 5) {
+    const a = (GA0 + (GA1 - GA0) * v / GMAX) * D2R, big = v % 10 === 0;
+    s += `<line x1="${f1(60 + Math.cos(a) * 37)}" y1="${f1(60 + Math.sin(a) * 37)}" x2="${f1(60 + Math.cos(a) * (big ? 31 : 34))}" y2="${f1(60 + Math.sin(a) * (big ? 31 : 34))}" stroke="#9fb7cf" stroke-width="${big ? 1.8 : 1}"/>`;
+    if (big) s += `<text x="${f1(60 + Math.cos(a) * 24)}" y="${f1(60 + Math.sin(a) * 24 + 3)}" font-size="8" fill="#9fb7cf" text-anchor="middle">${v}</text>`;
+  }
+  s += `<defs><linearGradient id="gaugeGrad" x1="0" x2="1"><stop offset="0" stop-color="#3fd1a0"/><stop offset=".6" stop-color="#ffd24a"/><stop offset="1" stop-color="#ff5a3c"/></linearGradient></defs>`;
+  s += `<g id="gNeedle"><path d="M58.4 60 L60 20 L61.6 60Z" fill="#ff6b4a"/></g><circle cx="60" cy="60" r="5" fill="#e8553d" stroke="#fff" stroke-width="1.5"/>`;
+  s += `<text id="gTxt" x="60" y="88" font-size="17" font-weight="800" fill="#fff" text-anchor="middle" font-family="ui-monospace,Consolas,monospace">0</text><text x="60" y="100" font-size="8" fill="#9fb7cf" text-anchor="middle">km/h</text>`;
+  gauge.innerHTML = s;
+}
+const gNeedle = $('gNeedle'), gArc = $('gArc'), gTxt = $('gTxt');
+const gearsBox = $('gears');
+CASSETTE.forEach((t, i) => { const b = document.createElement('i'); b.style.height = (38 + 62 * t / 28) + '%'; b.title = `${i + 1} 档 · ${t}T`; b.onclick = () => setGear(i); gearsBox.appendChild(b); });
+let toastTm;
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTm); toastTm = setTimeout(() => t.classList.remove('show'), 1600); }
+function setGear(i) {
+  i = clamp(i, 0, CASSETTE.length - 1); if (i === S.gear) return;
+  S.gear = i; refreshUI(); toast(`换到 ${i + 1} 档 · 飞轮 ${CASSETTE[i]}T · 齿比 ${ratio().toFixed(2)}`);
+}
+function setCad(v) { S.targetCad = clamp(Math.round(v), 0, 120); $('cad').value = S.targetCad; $('cadVal').textContent = S.targetCad + ' rpm'; }
+function refreshUI() {
+  [...gearsBox.children].forEach((b, i) => { b.className = i < S.gear ? 'on' : i === S.gear ? 'cur' : ''; });
+  const r = ratio();
+  $('ratioTxt').innerHTML = `齿比 ${CHAINRING} / ${CASSETTE[S.gear]} = <b>${r.toFixed(2)}</b> · 每踩一圈前进 <b>${(r * WHEEL_C).toFixed(2)} m</b>`;
+  $('btnPlay').innerHTML = (S.paused ? '播放' : '暂停') + '<kbd>P</kbd>'; $('btnPlay').classList.toggle('on', !S.paused);
+  $('btnSlow').classList.toggle('on', S.slow); $('btnSound').classList.toggle('on', S.sound);
+  $('btnNight').classList.toggle('on', S.night); $('btnRain').classList.toggle('on', S.rain); $('btnWind').classList.toggle('on', S.wind);
+  $('btnLabels').classList.toggle('on', S.labels);
+  L.labels.style.display = S.labels ? '' : 'none';
+}
+function ringBell() { sfx.ding(); bellLife = 1; bellShake = 1; bellRings.forEach((r, i) => r.life = 1 + i * .25); }
+const actions = {
+  play() { S.paused = !S.paused; refreshUI(); toast(S.paused ? '已暂停' : '继续骑行'); },
+  slow() { S.slow = !S.slow; refreshUI(); toast(S.slow ? '慢动作 ×0.25' : '正常速度'); },
+  sound() { S.sound = !S.sound; if (S.sound) audio(); refreshUI(); toast(S.sound ? '声音已开启' : '已静音'); },
+  night() { S.night = !S.night; refreshUI(); toast(S.night ? '夜幕降临，车灯自动点亮' : '天亮啦'); },
+  rain() { S.rain = !S.rain; refreshUI(); toast(S.rain ? (S.wind ? '暴风雨来了！' : '下雨了，路面湿滑') : '雨停了'); },
+  wind() { S.wind = !S.wind; refreshUI(); toast(S.wind ? '起风了（逆风，更费力）' : '风停了'); },
+  labels() { S.labels = !S.labels; refreshUI(); },
