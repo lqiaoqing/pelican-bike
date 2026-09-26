@@ -1,0 +1,256 @@
+  const vib = S.v > .3 ? (Math.sin(t * 37) * .35 + Math.sin(t * 23.3) * .3) * Math.min(1, S.v / 6) : 0;
+  setT(rig, `translate(0,${f1(vib)})`);
+  const bodyT = `translate(0,${f1(S.bob)}) rotate(${f1(lean)},${PIVOT.x},${PIVOT.y})`;
+  S.leanDraw = lean;
+  setT(bodyG, bodyT); setT(lay.tail, bodyT);
+  setT(tailG, `translate(${BODY.tail.x},${BODY.tail.y}) rotate(${f1(Math.sin(t * 13) * flutter * 4 - flutter * 3)})`);
+  ruffles.forEach(r => setT(r.e, `translate(${r.x},${r.y}) rotate(${f1(r.a + 180 + Math.sin(t * 17 + r.ph) * flutter * 18 + flutter * 8)})`));
+  // 车轮
+  setT(wheelR.spin, `rotate(${f1(deg(S.wheelR) % 360)})`);
+  setT(wheelF.spin, `rotate(${f1(deg(S.wheelF) % 360)})`);
+  const spokeOp = clamp(1.25 - wWheel / 28, .18, 1), blurOp = clamp((wWheel - 8) / 22, 0, .9);
+  wheelR.spokes.setAttribute('opacity', S.skidding ? 1 : spokeOp); wheelF.spokes.setAttribute('opacity', spokeOp);
+  wheelR.blur.setAttribute('opacity', S.skidding ? 0 : blurOp); wheelF.blur.setAttribute('opacity', blurOp);
+  // 传动
+  setT(chainring, `translate(${GEO.BB.x},${GEO.BB.y}) rotate(${f1(deg(S.crank) % 360)})`);
+  setT(cassette, `translate(${GEO.RW.x},${GEO.RW.y}) rotate(${f1(deg(S.cogAng) % 360)})`);
+  const cp = S.chainPos % (chainPitch * 1000);
+  chainPlates.setAttribute('stroke-dashoffset', f1(-cp)); chainPins.setAttribute('stroke-dashoffset', f1(-cp - chainPitch * .79));
+  const pN = P(GEO.BB.x + Math.cos(S.crank) * CRANK, GEO.BB.y + Math.sin(S.crank) * CRANK);
+  const pF = P(GEO.BB.x - Math.cos(S.crank) * CRANK, GEO.BB.y - Math.sin(S.crank) * CRANK);
+  setT(crankNearG, `translate(${GEO.BB.x},${GEO.BB.y}) rotate(${f1(deg(S.crank))})`);
+  setT(crankFarG, `translate(${GEO.BB.x},${GEO.BB.y}) rotate(${f1(deg(S.crank) + 180)})`);
+  setT(pedalNear, `translate(${f1(pN.x)},${f1(pN.y)})`); setT(pedalFar, `translate(${f1(pF.x)},${f1(pF.y)})`);
+  // 腿（IK，脚掌踩在踏板上，踏板保持水平）
+  const hipN = bodyXf(BODY.hipN), hipF = bodyXf(BODY.hipF);
+  const fN = P(pN.x - 13, pN.y - 9), fF = P(pF.x - 13, pF.y - 9);
+  const ankN = drawLeg(legN, hipN, fN); drawLeg(legF, hipF, fF);
+  // 翅膀握把
+  const shN = bodyXf(BODY.shN), shF = bodyXf(BODY.shF);
+  const gripN = P(GEO.GRIP.x + 2, GEO.GRIP.y), gripF = P(GEO.GRIP.x + 7, GEO.GRIP.y - 5);
+  drawWing(wingF, shF, gripF, flutter, t + 1.3);
+  const wn = drawWing(wingN, shN, gripN, flutter, t);
+  // 头部稳定：头部位置由弹簧跟随目标，吸收身体起伏
+  const neckB = bodyXf(BODY.neck);
+  const headTarget = add(HEAD0, P((neckB.x - BODY.neck.x) * .55 + (S.braking && S.v > .2 ? 6 : 0) + WD * 3, (neckB.y - BODY.neck.y) * .25));
+  if (!S.head) S.head = { ...headTarget };
+  const k = 90, dmp = 16;
+  S.headV.x += ((headTarget.x - S.head.x) * k - S.headV.x * dmp) * dt;
+  S.headV.y += ((headTarget.y - S.head.y) * k - S.headV.y * dmp) * dt;
+  S.head.x += S.headV.x * dt; S.head.y += S.headV.y * dt;
+  let lookAng = 12 + (S.braking && S.v > .2 ? 4 : 0) - S.mouth * 6;
+  const fl = flyers.find(f => f.toFn === billTip);
+  if (fl) lookAng -= 8 * Math.sin(Math.min(1, fl.t) * Math.PI);
+  S.headAngDeg = smooth(S.headAngDeg || 12, lookAng, 6, dt);
+  S.headAng = S.headAngDeg * D2R;
+  setT(headG, `translate(${f1(S.head.x)},${f1(S.head.y)}) rotate(${f1(S.headAngDeg)})`);
+  drawNeck(neckB, headXf(P(-10, 12)));
+  // 冠羽飘动
+  crestFeathers.forEach((fe, i) => setT(fe, `rotate(${f1(Math.sin(t * 15 + i * 1.3) * (3 + flutter * 14) - flutter * 8)})`));
+  // 眨眼
+  S.nextBlink -= rdt;
+  if (S.nextBlink < 0) { S.blink = 1; S.nextBlink = rand(2.2, 5.5); if (Math.random() < .2) S.nextBlink = .25; }
+  S.blink = Math.max(0, S.blink - rdt * 7);
+  const lidK = Math.sin(S.blink * Math.PI);
+  lid.setAttribute('transform', `translate(11 -5) scale(1 ${lidK.toFixed(3)}) translate(-11 5)`);
+  lidLine.setAttribute('opacity', lidK > .8 ? 1 : 0);
+  // 张嘴 & 喉囊弹簧
+  S.mouth = smooth(S.mouth, S.mouthTarget, 10, dt);
+  const accelKick = -(S.accel - (S.prevAccel || 0));
+  S.prevAccel = S.accel;
+  const pouchRest = 12 + S.pouchFish * 16 + S.mouth * 8 + (S.v * .3);
+  S.pouchV += (-(S.pouchD - pouchRest) * 60 - S.pouchV * 5 + accelKick * 40 + vib * 20 + Math.sin(t * 20) * flutter * 30) * dt;
+  S.pouchD += S.pouchV * dt;
+  const D = clamp(S.pouchD, 4, 50), bx = 72 + clamp(S.pouchV * .2, -12, 12) - S.v * .8;
+  const jaw = S.mouth * 22;
+  setT(lowerJaw, `rotate(${f1(jaw)},14,6)`);
+  const pd = pouchD(D, bx);
+  pouchPath.setAttribute('d', pd); $('cpPouchPath').setAttribute('d', pd);
+  pouchFolds.setAttribute('d', `M30 11 Q${f1(bx - 10)} ${f1(9 + D * .75)} 140 11 M40 11 Q${f1(bx)} ${f1(9 + D * .5)} 120 10 M6 24 Q${f1(bx - 30)} ${f1(10 + D * .9)} ${f1(bx + 20)} ${f1(8 + D * .95)}`);
+  const jt = rot(P(166, 9), P(14, 6), jaw * D2R);
+  mouthIn.setAttribute('d', `M14 5 L163 5 L${f1(jt.x)} ${f1(jt.y)}Z`);
+  pouchFishEl.setAttribute('opacity', S.pouchFish);
+  setT(pouchFishEl, `translate(${f1(bx + 6 + Math.sin(t * 18) * 2)},${f1(12 + D * .45)}) rotate(${f1(Math.sin(t * 14) * 8)})`);
+  // 雨天喙尖滴水
+  if (RN > .3) {
+    dripAcc += dt * 2.2 * RN;
+    if (dripAcc > 1) { dripAcc = 0; const d = drips.find(d => d.life <= 0); if (d) { const bt = billTip(); d.x = bt.x + 4; d.y = bt.y + 4; d.vy = 0; d.life = 1; } }
+  }
+  for (const d of drips) {
+    if (d.life <= 0) { d.e.setAttribute('opacity', 0); continue; }
+    d.vy += 900 * dt; d.y += d.vy * dt; d.x -= S.v * PX_PER_M * .05 * dt; d.life -= dt * 1.6;
+    d.e.setAttribute('cx', f1(d.x)); d.e.setAttribute('cy', f1(d.y)); d.e.setAttribute('opacity', f1(Math.max(0, d.life) * 90) / 100);
+  }
+
+  // —— 车铃 ——
+  bellShake = Math.max(0, bellShake - rdt * 3);
+  setT(bell, `translate(${GEO.BELL.x},${GEO.BELL.y}) rotate(${f1(Math.sin(t * 60) * 12 * bellShake)})`);
+  bellRings.forEach(r => {
+    if (r.life <= 0) { r.e.setAttribute('opacity', 0); return; }
+    r.life -= rdt * 1.4; const k = clamp(1 - r.life, 0, 1);
+    r.e.setAttribute('cx', GEO.BELL.x); r.e.setAttribute('cy', GEO.BELL.y - 4); r.e.setAttribute('r', f1(8 + k * 46));
+    r.e.setAttribute('opacity', r.life > 1 ? 0 : f1(r.life * 100) / 100);
+  });
+  bellLife = Math.max(0, bellLife - rdt * .8);
+  bellText.setAttribute('x', GEO.BELL.x + 10); bellText.setAttribute('y', f1(GEO.BELL.y - 40 - (1 - bellLife) * 30));
+  bellText.setAttribute('opacity', f1(Math.min(1, bellLife * 2) * 100) / 100);
+
+  // —— 灯光 ——
+  const brakeGlow = S.braking ? 1 : 0;
+  const tailOn = N > .3 ? (Math.sin(t * 9) > -.2 ? 1 : .25) : 0;
+  const tl = Math.max(tailOn, brakeGlow);
+  tailLens.setAttribute('fill', tl > .5 ? '#ff4636' : '#b8261c');
+  tailGlow.setAttribute('opacity', f1(Math.max(tl * N, brakeGlow * .8) * 100) / 100);
+  lampLens.setAttribute('fill', N > .3 ? '#fffbe6' : '#e9e2c6');
+  setT(headBeam, `translate(0,${f1(vib)})`);
+
+  // —— 雨 ——
+  if (RN > .01) {
+    const vx = -(S.v * PX_PER_M * .45 + WD * 380 + 60), vy = 1150;
+    const kx = vx / vy;
+    for (const d of rainDrops) {
+      d.x += vx * d.z * dt; d.y += vy * d.z * dt;
+      if (d.y > d.gy) { if (Math.random() < .5 && d.gy > ROAD_TOP) spawnSplash(d.x, d.gy); d.y = rand(-150, -10); d.x = rand(-100, 1900); d.gy = rand(640, 900); }
+      if (d.x < -150) d.x += 1900;
+      const l = 22 * d.z;
+      d.e.setAttribute('x1', f1(d.x)); d.e.setAttribute('y1', f1(d.y)); d.e.setAttribute('x2', f1(d.x - kx * l)); d.e.setAttribute('y2', f1(d.y - l));
+    }
+    // 车轮溅水
+    if (S.v > 2 && Math.random() < RN * S.v * dt * 3) spawnSplash(GEO.RW.x - 40 + rand(-20, 20), GROUND_Y - rand(0, 6), true);
+  }
+  for (const s of splashes) {
+    if (s.life <= 0) { if (s.e.getAttribute('opacity') !== '0') s.e.setAttribute('opacity', 0); continue; }
+    s.life -= dt * 3; s.x -= S.v * PX_PER_M * dt;
+    const k = 1 - s.life;
+    s.e.setAttribute('cx', f1(s.x)); s.e.setAttribute('cy', f1(s.y)); s.e.setAttribute('rx', f1((2 + k * 9) * s.big)); s.e.setAttribute('ry', f1((1 + k * 2.4) * s.big));
+    s.e.setAttribute('opacity', f1(Math.max(0, s.life) * 80) / 100);
+  }
+  // —— 风中落叶 ——
+  if (WD > .01) for (const l of leaves) {
+    l.x -= (S.v * PX_PER_M * .9 + 420 * l.s) * dt; l.ph += dt * 3; l.a += l.vr * 60 * dt;
+    l.y += Math.sin(l.ph) * 60 * dt + 18 * dt;
+    if (l.x < -40 || l.y > 900) { l.x = rand(1650, 2000); l.y = rand(150, 820); }
+    setT(l.e, `translate(${f1(l.x)},${f1(l.y)}) rotate(${f1(l.a)}) scale(${l.s},${f1(l.s * Math.abs(Math.sin(l.ph * 1.3)) + .2)})`);
+  }
+  // —— 扬尘（高速 / 刹车）——
+  const kmh = S.v * 3.6;
+  dustAcc += dt * ((kmh > 24 ? (kmh - 24) * .8 : 0) + (S.skidding ? 40 : 0)) * (1 - RN);
+  while (dustAcc > 1) {
+    dustAcc -= 1; const d = dusts[dustIdx++ % dusts.length];
+    d.x = GEO.RW.x - 60 + rand(-20, 30) + (S.skidding ? 60 : 0); d.y = GROUND_Y - rand(2, 10); d.life = 1; d.r = rand(4, 9); d.vx = rand(-60, 10);
+  }
+  for (const d of dusts) {
+    if (d.life <= 0) { if (d.e.getAttribute('opacity') !== '0') d.e.setAttribute('opacity', 0); continue; }
+    d.life -= dt * 1.4; d.x += (d.vx - S.v * PX_PER_M * .6) * dt; d.y -= 14 * dt;
+    d.e.setAttribute('cx', f1(d.x)); d.e.setAttribute('cy', f1(d.y)); d.e.setAttribute('r', f1(d.r * (2 - d.life)));
+    d.e.setAttribute('opacity', f1(Math.max(0, d.life) * 45) / 100);
+  }
+  // —— 速度线 ——
+  const sp = clamp((kmh - 25) / 12, 0, 1);
+  L.speed.style.opacity = sp;
+  if (sp > 0) for (const s of speedLines) {
+    s.x -= S.v * PX_PER_M * 1.5 * s.k * dt;
+    if (s.x < -300) { s.x = rand(1650, 2100); s.y = rand(120, 860); }
+    const len = 80 + S.v * 18 * s.k;
+    s.e.setAttribute('x1', f1(s.x)); s.e.setAttribute('x2', f1(s.x + len)); s.e.setAttribute('y1', f1(s.y)); s.e.setAttribute('y2', f1(s.y));
+    s.e.setAttribute('opacity', (.25 + .25 * s.k).toFixed(2));
+  }
+  // —— 飞行中的鱼 ——
+  for (let i = flyers.length - 1; i >= 0; i--) {
+    const f = flyers[i]; f.t += dt / f.dur;
+    const tt = Math.min(1, f.t), to = typeof f.toFn === 'function' ? f.toFn() : f.toFn;
+    const e = tt < .5 ? 2 * tt * tt : 1 - Math.pow(-2 * tt + 2, 2) / 2;
+    const x = lerp(f.from.x, to.x, e), y = lerp(f.from.y, to.y, e) + f.arc * 4 * tt * (1 - tt);
+    const sc = lerp(f.s0, f.s1, tt);
+    setT(f.e, `translate(${f1(x)},${f1(y)}) rotate(${f1(Math.sin(tt * 20) * 15 + (to.x < f.from.x ? 180 : 0))}) scale(${sc.toFixed(3)},${(to.x < f.from.x ? -sc : sc).toFixed(3)})`);
+    if (f.t >= 1) { f.e.remove(); flyers.splice(i, 1); f.onDone && f.onDone(); }
+  }
+  // —— 对话气泡 ——
+  bubLife = Math.max(0, bubLife - rdt);
+  bub.setAttribute('opacity', f1(Math.min(1, bubLife * 3) * 100) / 100);
+  setT(bub, `translate(${f1(S.head.x + 30)},${f1(S.head.y - 70 - (bubLife > 2.2 ? (bubLife - 2.2) * 40 : 0))})`);
+  // 阴影
+  shadow.setAttribute('rx', f1(250 - N * 20)); shadow.setAttribute('opacity', f1((1 - RN * .4) * (1 - N * .3) * 100) / 100);
+
+  // —— 结构标注锚点 ——
+  if (S.labels) {
+    cur.crest = headXf(P(-34, -8)); cur.eye = headXf(P(11, -5)); cur.billMid = headXf(P(90, -8)); cur.hook = headXf(P(178, 8));
+    cur.pouch = headXf(rot(P(bx, 9 + D * .8), P(14, 6), jaw * D2R));
+    cur.neckMid = add(lerpP(neckB, headXf(P(-10, 12)), .5), P(-8, 0));
+    cur.coverts = lerpP(shN, wn.E, .5); cur.secondary = add(wn.E, P(-6, 38)); cur.primary = P(GEO.GRIP.x + 6, GEO.GRIP.y + 4);
+    cur.thigh = lerpP(hipN, ankN, .3); cur.ankle = ankN; cur.foot = add(fN, P(22, 2)); cur.pedal = pN;
+    cur.valve = rot(P(GEO.FW.x, GEO.FW.y - 84), GEO.FW, S.wheelF);
+    updateLabels();
+  }
+}
+const lerpP = (a, b, t) => P(lerp(a.x, b.x, t), lerp(a.y, b.y, t));
+
+let hudAcc = 1;
+function updateHUD(rdt) {
+  hudAcc += rdt; if (hudAcc < .1) return; hudAcc = 0;
+  const kmh = S.v * 3.6, cad = S.crankW * 60 / TAU;
+  $('sSpeed').innerHTML = kmh.toFixed(1) + '<small>km/h</small>';
+  $('sCad').innerHTML = Math.round(cad) + '<small>rpm</small>';
+  $('sGear').innerHTML = (S.gear + 1) + '<small>/7</small>';
+  $('sRatio').textContent = `${CHAINRING}:${CASSETTE[S.gear]}`;
+  $('sOdo').innerHTML = (S.dist / 1000).toFixed(2) + '<small>km</small>';
+  $('sFish').innerHTML = S.fishCaught + '<small>条</small>' + (S.eaten ? `<small> · 吃${S.eaten}</small>` : '');
+  const k = clamp(kmh / GMAX, 0, 1);
+  setT(gNeedle, `rotate(${f1(GA0 + 90 + (GA1 - GA0) * k)},60,60)`);
+  gArc.setAttribute('stroke-dasharray', `${f1(k * 100)} 100`);
+  gTxt.textContent = kmh.toFixed(0);
+  $('hudTitle').innerHTML = '鹈鹕号<span>' + (S.braking ? '刹车中！' : S.paused ? '已暂停' : !S.pedaling && S.v > .3 ? '滑行中（棘轮咔咔响）' : S.v < .1 ? '停车休息' : '海滨大道骑行中') + '</span>';
+  updateAmbient();
+}
+
+/* =====================================================================
+ *  主循环
+ * ===================================================================== */
+let last = performance.now();
+const brakeAt = Q.get('brake') ? +Q.get('brake') : -1;
+let catchAt = Q.get('catch') ? +Q.get('catch') : -1, pokeAt = Q.get('poke') ? +Q.get('poke') : -1;   // 仅用于截图/演示的 URL 参数
+function frame(now) {
+  const rdt = Math.min(.05, Math.max(0, (now - last) / 1000)); last = now;
+  step(S.paused ? 0 : rdt * (S.slow ? .25 : 1), rdt);
+  requestAnimationFrame(frame);
+}
+function step(dt, rdt) {
+  S.t += dt;
+  if (brakeAt >= 0 && S.t > brakeAt) S.brakeKey = true;
+  if (catchAt >= 0 && S.t > catchAt) { catchAt = -1; autoCatch(); }
+  if (pokeAt >= 0 && S.t > pokeAt) { pokeAt = -1; pokePelican(); }
+  runTasks();
+  physics(dt);
+  render(dt, rdt);
+  updateHUD(rdt);
+}
+// 初始化
+rebuildChain();
+setCad(S.targetCad);
+refreshUI();
+if (Q.get('panel') === '0' || innerWidth < 760) { $('panel').classList.add('collapsed'); $('btnFold').textContent = '+'; }
+if (Q.get('help') === '1') $('help').classList.add('show');
+if (Q.get('zoom')) { const z = +Q.get('zoom'); zoomAt(z, +(Q.get('zx') || 780), +(Q.get('zy') || 520)); }
+if (Q.get('mouth') === '1') S.mouthTarget = 1;
+if (Q.get('bubble')) bubble(Q.get('bubble'));
+// 预热（URL 参数 warm=秒数，用于截图时直接进入稳定状态）
+if (Q.get('warm')) { const n = Math.round(+Q.get('warm') * 60); for (let i = 0; i < n; i++) step(1 / 60, 1 / 60); }
+// 自检（URL 参数 selftest=1）：依次触发所有交互，结果写入标题，便于无头浏览器验证
+if (Q.get('selftest') === '1') {
+  const log = [];
+  const key = (k, up) => dispatchEvent(new KeyboardEvent(up ? 'keyup' : 'keydown', { key: k, code: k === ' ' ? 'Space' : '' }));
+  try {
+    ['ArrowUp', 'w', 'ArrowDown', 's', 'q', 'e', 'e', 'b', 'n', 'r', 'g', 'l', 'm', 'm', 'f', 'c', '+', '-', '0', 'h', 'h'].forEach(k => { key(k); for (let i = 0; i < 20; i++) step(1 / 60, 1 / 60); });
+    key(' '); for (let i = 0; i < 90; i++) step(1 / 60, 1 / 60); key(' ', true);
+    ['btnPlay', 'btnPlay', 'btnSlow', 'btnSlow', 'btnNight', 'btnRain', 'btnWind', 'btnLabels', 'btnFish', 'btnPoke', 'btnView', 'btnBell', 'gDown', 'gUp', 'btnFold', 'btnFold', 'btnHelp', 'btnHelp', 'btnSound', 'btnSound'].forEach(id => { $(id).click(); for (let i = 0; i < 15; i++) step(1 / 60, 1 / 60); });
+    fishes.forEach(f => { if (f.state === 'jump') catchFish(f); });
+    for (let i = 0; i < 400; i++) step(1 / 60, 1 / 60);
+    pokePelican(); for (let i = 0; i < 120; i++) step(1 / 60, 1 / 60);
+    log.push('OK', 'v=' + S.v.toFixed(2), 'gear=' + (S.gear + 1), 'fish=' + S.fishCaught, 'basket=' + S.basketFish, 'eaten=' + S.eaten, 'night=' + S.night, 'rain=' + S.rain, 'wind=' + S.wind);
+  } catch (err) { log.push('ERR ' + err.message + ' ' + (err.stack || '').split('\n')[1]); }
+  document.title = 'SELFTEST ' + log.join(' ');
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
