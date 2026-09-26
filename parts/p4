@@ -1,0 +1,256 @@
+html(pouchFishG, `<g id="pouchFish" opacity="0" transform="translate(80 22)">${fishSVG(1.25, true)}</g>`);
+const pouchFishEl = $('pouchFish');
+
+/* =====================================================================
+ *  鹈鹕 —— 动态部件（腿、翅、颈、喉囊）
+ * ===================================================================== */
+// 两节骨骼 IK：返回关节位置。s=+1 时关节位于 a→b 方向的顺时针一侧
+function ik(a, b, L1, L2, s) {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const d = clamp(Math.hypot(dx, dy), Math.abs(L1 - L2) + .01, L1 + L2 - .01);
+  const base = Math.atan2(dy, dx);
+  const al = Math.acos(clamp((L1 * L1 + d * d - L2 * L2) / (2 * L1 * d), -1, 1));
+  return P(a.x + Math.cos(base + s * al) * L1, a.y + Math.sin(base + s * al) * L1);
+}
+const unit = (a, b) => { const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1; return P(dx / L, dy / L); };
+const add = (a, b, k = 1) => P(a.x + b.x * k, a.y + b.y * k);
+const pstr = p => `${f1(p.x)} ${f1(p.y)}`;
+
+// —— 腿 & 蹼足 ——
+function footSVG(far) {
+  const web = far ? '#c9703e' : '#f59a63', toe = far ? '#a4532a' : '#e06f35', claw = far ? '#4a3a33' : '#5a463c';
+  return `<g>
+    <path d="M-4 -3 C8 -7 30 -6 46 -1 L46 3 C40 5 36 6 32 8 C26 7 20 8 12 8 L2 8 L-7 5Z" fill="${web}" stroke="${toe}" stroke-width="1"/>
+    <path d="M-2 -1 Q22 -4 45 1 M-2 1 Q20 1 38 6 M-2 3 Q16 5 29 8" fill="none" stroke="${toe}" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M-3 4 Q2 9 10 9" fill="none" stroke="${toe}" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M45 1 l4 1.5 M38 6 l4 1.8 M29 8 l3.5 1.5" stroke="${claw}" stroke-width="2" stroke-linecap="round"/>
+    <path d="M4 -2 Q20 -4 34 -2" stroke="#fff" stroke-width="1" opacity="${far ? 0 : .35}" fill="none"/></g>`;
+}
+function makeLeg(parent, far) {
+  const grp = g(parent);
+  const o = {
+    shin: el('line', { stroke: far ? '#c4693b' : '#ec8447', 'stroke-width': 9, 'stroke-linecap': 'round' }, grp),
+    feather: el('path', { fill: far ? '#d7ccc6' : '#fbf4f0', stroke: far ? '#b9aca5' : '#dccbc3', 'stroke-width': 1 }, grp),
+    fl: el('path', { fill: 'none', stroke: far ? '#b9aca5' : '#e3d4cd', 'stroke-width': 1.1, 'stroke-linecap': 'round' }, grp),
+    tars: el('line', { stroke: far ? '#c4693b' : '#f08f55', 'stroke-width': 8, 'stroke-linecap': 'round' }, grp),
+    scales: el('path', { stroke: far ? '#8e4522' : '#c75f2a', 'stroke-width': 1, opacity: .45, fill: 'none' }, grp),
+    ankle: el('circle', { r: 5.6, fill: far ? '#b55f33' : '#e8793c' }, grp),
+    foot: html(grp, `<g>${footSVG(far)}</g>`),
+  };
+  if (!far) { tip(o.feather, '胫部（大半被羽毛覆盖，真正的膝盖藏在身体里）'); tip(o.ankle, '踝关节（鸟类向后弯的“反关节”）'); tip(o.tars, '跗跖（裸露、橙粉色、覆鳞片）'); tip(o.foot, '全蹼足（四趾之间都有蹼）'); }
+  return o;
+}
+const farLegG = lay.farLeg.firstChild;
+const legF = makeLeg(farLegG, true);
+const legN = makeLeg(lay.nearLeg, false);
+function drawLeg(o, hip, foot) {
+  const J = ik(hip, foot, TIB, TAR, 1);           // 关节向后
+  const u = unit(hip, J), n = P(-u.y, u.x);
+  const Lh = Math.hypot(J.x - hip.x, J.y - hip.y);
+  const m = add(hip, u, Lh * .68);
+  const w0 = 21, w1 = 8;
+  const q = add(hip, u, Lh * .32);
+  o.feather.setAttribute('d', `M${pstr(add(add(hip, u, -8), n, w0 * .9))} Q${pstr(add(q, n, w0 * 1.02))} ${pstr(add(m, n, w1))} C${pstr(add(add(m, u, 9), n, w1))} ${pstr(add(add(m, u, 9), n, -w1))} ${pstr(add(m, n, -w1))} Q${pstr(add(q, n, -w0 * 1.02))} ${pstr(add(add(hip, u, -8), n, -w0 * .9))}Z`);
+  const c1 = add(hip, u, Lh * .42), c2 = add(hip, u, Lh * .56);
+  o.fl.setAttribute('d', `M${pstr(add(add(c1, n, -9), u, -4))}Q${pstr(add(c1, u, 3))} ${pstr(add(add(c1, n, 9), u, -4))}M${pstr(add(add(c2, n, -6), u, -3))}Q${pstr(add(c2, u, 3))} ${pstr(add(add(c2, n, 6), u, -3))}`);
+  const s0 = add(hip, u, Lh * .6);
+  o.shin.setAttribute('x1', f1(s0.x)); o.shin.setAttribute('y1', f1(s0.y)); o.shin.setAttribute('x2', f1(J.x)); o.shin.setAttribute('y2', f1(J.y));
+  o.tars.setAttribute('x1', f1(J.x)); o.tars.setAttribute('y1', f1(J.y)); o.tars.setAttribute('x2', f1(foot.x)); o.tars.setAttribute('y2', f1(foot.y));
+  const ut = unit(J, foot), nt = P(-ut.y, ut.x), Lt = Math.hypot(foot.x - J.x, foot.y - J.y);
+  let d = '';
+  for (let k = 10; k < Lt - 6; k += 7) { const c = add(J, ut, k); d += `M${pstr(add(c, nt, -3.6))}L${pstr(add(add(c, nt, 3.6), ut, 1.5))}`; }
+  o.scales.setAttribute('d', d);
+  setT(o.ankle, `translate(${f1(J.x)},${f1(J.y)})`); o.ankle.setAttribute('cx', 0);
+  setT(o.foot, `translate(${f1(foot.x)},${f1(foot.y)})`);
+  return J;
+}
+
+// —— 翅膀（当作手臂握把）——
+function makeWing(parent, far) {
+  const grp = g(parent);
+  const o = { sec: [], ter: [], prim: [], far };
+  for (let i = 0; i < 8; i++) o.sec.push(el('path', { fill: far ? '#15151a' : '#23232b', stroke: far ? '#0c0c10' : '#4a4a58', 'stroke-width': .8 }, grp));
+  for (let i = 0; i < 5; i++) o.ter.push(el('path', { fill: far ? '#cfc6c3' : '#ece6e8', stroke: far ? '#aaa' : '#c9bfc2', 'stroke-width': .8 }, grp));
+  o.band = el('path', { fill: far ? '#ddd3cf' : '#fffaf7', stroke: far ? '#b9aca5' : '#dccbc3', 'stroke-width': 1.1 }, grp);
+  o.cov = el('path', { fill: 'none', stroke: far ? '#c4b8b2' : '#e6d8d1', 'stroke-width': 1.1, 'stroke-linecap': 'round' }, grp);
+  o.alula = el('path', { fill: far ? '#15151a' : '#2a2a33' }, grp);
+  for (let i = 0; i < 4; i++) o.prim.push(el('path', { fill: 'none', stroke: far ? '#101014' : '#1e1e25', 'stroke-width': 6.4 - i * .4, 'stroke-linecap': 'round' }, grp));
+  o.primHi = el('path', { fill: 'none', stroke: '#5a5a6a', 'stroke-width': 1, 'stroke-linecap': 'round', opacity: far ? 0 : .9 }, grp);
+  if (!far) {
+    tip(o.band, '翅膀覆羽（白色）'); o.sec.forEach(e => tip(e, '次级飞羽（黑色，白鹈鹕的典型特征）'));
+    o.prim.forEach(e => tip(e, '初级飞羽（像手指一样握住车把）')); o.ter.forEach(e => tip(e, '三级飞羽'));
+  }
+  return o;
+}
+const wingF = makeWing(lay.farWing, true);
+const wingN = makeWing(lay.nearWing, false);
+function featherD(b, dir, len, w) {
+  const n = P(-dir.y, dir.x), m = add(b, dir, len * .55), tipP = add(b, dir, len);
+  return `M${pstr(add(b, n, w * .5))}Q${pstr(add(m, n, w))} ${pstr(tipP)}Q${pstr(add(m, n, -w * .7))} ${pstr(add(b, n, -w * .5))}Z`;
+}
+// Catmull-Rom 闭合平滑曲线
+function smoothClosed(p) {
+  const n = p.length; let d = `M${pstr(p[0])}`;
+  for (let i = 0; i < n; i++) {
+    const p0 = p[(i - 1 + n) % n], p1 = p[i], p2 = p[(i + 1) % n], p3 = p[(i + 2) % n];
+    d += `C${f1(p1.x + (p2.x - p0.x) / 6)} ${f1(p1.y + (p2.y - p0.y) / 6)} ${f1(p2.x - (p3.x - p1.x) / 6)} ${f1(p2.y - (p3.y - p1.y) / 6)} ${pstr(p2)}`;
+  }
+  return d + 'Z';
+}
+function rotV(v, a) { const c = Math.cos(a), s = Math.sin(a); return P(v.x * c - v.y * s, v.x * s + v.y * c); }
+function drawWing(o, sh, gp, flutter, t) {
+  const W = P(gp.x - 11, gp.y - 10);
+  const E = ik(sh, W, HUM, ULNA, 1);
+  const u1 = unit(sh, E), u2 = unit(E, W);
+  const up1 = P(u1.y, -u1.x), up2 = P(u2.y, -u2.x);
+  const upE = unit(P(0, 0), add(up1, up2));
+  // 前缘厚带（肱/前臂 + 覆羽）
+  const pts = [add(add(sh, u1, -10), up1, 6), add(sh, up1, 13), add(add(sh, u1, HUM * .55), up1, 11), add(E, upE, 8), add(add(E, u2, ULNA * .5), up2, 7.5),
+    add(W, up2, 6), add(W, u2, 7), add(W, up2, -7), add(add(E, u2, ULNA * .5), up2, -11), add(E, upE, -13), add(add(sh, u1, HUM * .5), up1, -18), add(add(sh, u1, -6), up1, -20)];
+  o.band.setAttribute('d', smoothClosed(pts));
+  // 覆羽鳞片纹
+  let cv = '';
+  for (let row = 0; row < 2; row++) for (let k = 0; k < 6; k++) {
+    const tt = (k + .5 + row * .5) / 6.5, onA = tt < .5, uu = onA ? u1 : u2, upv = onA ? up1 : up2;
+    const base = onA ? add(sh, u1, HUM * tt * 2) : add(E, u2, ULNA * (tt - .5) * 2);
+    const c = add(base, upv, 3 - row * 8);
+    const a = add(c, uu, -4), b = add(c, uu, 4), m = add(c, upv, -3.5);
+    cv += `M${pstr(a)}Q${pstr(m)} ${pstr(b)}`;
+  }
+  o.cov.setAttribute('d', cv);
+  // 次级飞羽：沿前臂后缘下垂，随风向后飘
+  const back = P(-1, 0);
+  for (let i = 0; i < o.sec.length; i++) {
+    const tt = i / (o.sec.length - 1);
+    const b = add(add(E, u2, ULNA * tt * .92), up2, -8);
+    let dir = rotV(P(-up2.x, -up2.y), -.55 - tt * .15);
+    const fl = Math.sin(t * 11 + i * .9) * flutter * .18 + flutter * .28;
+    dir = unit(P(0, 0), add(dir, back, fl));
+    o.sec[i].setAttribute('d', featherD(b, dir, 50 - tt * 12, 12));
+  }
+  for (let i = 0; i < o.ter.length; i++) {
+    const tt = i / (o.ter.length - 1);
+    const b = add(add(sh, u1, HUM * (.1 + tt * .85)), up1, -15);
+    let dir = rotV(P(-up1.x, -up1.y), -.7);
+    dir = unit(P(0, 0), add(dir, back, flutter * .25 + Math.sin(t * 9 + i) * flutter * .12));
+    o.ter[i].setAttribute('d', featherD(b, dir, 40 - tt * 6, 13));
+  }
+  // 小翼羽
+  o.alula.setAttribute('d', featherD(add(W, up2, 4), rotV(u2, -.5), 18, 6));
+  // 初级飞羽：从腕部绕过把套，像手指一样包住
+  let hi = '';
+  for (let i = 0; i < 4; i++) {
+    const x = gp.x - 11 + i * 7.2, y = gp.y;
+    const s0 = add(W, u2, -2 + i * 2.5);
+    const d = `M${pstr(s0)}C${f1(x - 7)} ${f1(y - 16)} ${f1(x + 3)} ${f1(y - 10)} ${f1(x + 2.5)} ${f1(y - 4)}L${f1(x + 1)} ${f1(y + 7.5)}`;
+    o.prim[i].setAttribute('d', d);
+    hi += `M${f1(x - 2)} ${f1(y - 9)}Q${f1(x + 2)} ${f1(y - 8)} ${f1(x + 2)} ${f1(y - 2)}`;
+  }
+  o.primHi.setAttribute('d', hi);
+  return { E, W };
+}
+
+// —— 颈（S 形，按贝塞尔采样生成变宽轮廓）——
+function drawNeck(base, top) {
+  const P1 = add(base, P(42, -8)), P2 = add(top, P(-38, 34));
+  const N = 22, L = [], R = [], mid = [];
+  for (let i = 0; i <= N; i++) {
+    const t = i / N, u = 1 - t;
+    const pt = P(u * u * u * base.x + 3 * u * u * t * P1.x + 3 * u * t * t * P2.x + t * t * t * top.x, u * u * u * base.y + 3 * u * u * t * P1.y + 3 * u * t * t * P2.y + t * t * t * top.y);
+    const dt = P(3 * u * u * (P1.x - base.x) + 6 * u * t * (P2.x - P1.x) + 3 * t * t * (top.x - P2.x), 3 * u * u * (P1.y - base.y) + 6 * u * t * (P2.y - P1.y) + 3 * t * t * (top.y - P2.y));
+    const len = Math.hypot(dt.x, dt.y) || 1, n = P(-dt.y / len, dt.x / len);
+    const w = lerp(24, 12, Math.pow(t, .8)) + Math.sin(t * Math.PI) * 2;
+    L.push(add(pt, n, w)); R.push(add(pt, n, -w)); mid.push({ pt, n, w });
+  }
+  let d = `M${pstr(L[0])}`;
+  for (let i = 1; i <= N; i++) d += `L${pstr(L[i])}`;
+  for (let i = N; i >= 0; i--) d += `L${pstr(R[i])}`;
+  neckPath.setAttribute('d', d + 'Z');
+  let s = '';
+  for (let i = 3; i <= N - 3; i++) s += (i === 3 ? 'M' : 'L') + pstr(add(mid[i].pt, mid[i].n, -mid[i].w * .7));
+  neckShade.setAttribute('d', s);
+}
+
+// —— 喉囊 ——
+function pouchD(D, bx) {
+  return `M16 9 L162 9 C140 ${f1(9 + D * .35)} ${f1(bx + 34)} ${f1(9 + D)} ${f1(bx)} ${f1(9 + D)} C${f1(bx - 36)} ${f1(9 + D)} 14 ${f1(20 + D * .7)} -6 ${f1(30 + D * .3)} L-8 18 Q4 10 16 9Z`;
+}
+function headXf(p) { const a = S.headAng; return add(S.head, rotV(p, a)); }
+
+/* =====================================================================
+ *  粒子 & 特效
+ * ===================================================================== */
+// 雨
+const rainDrops = [];
+for (let i = 0; i < 170; i++) rainDrops.push({ e: el('line', { stroke: '#e6f0fa', 'stroke-width': 1.6, 'stroke-linecap': 'round', opacity: .85 }, L.rainL), x: rand(-100, 1700), y: rand(-200, 900), z: rand(.5, 1.2), gy: rand(650, 900) });
+L.rainL.style.opacity = 0;
+const splashes = [];
+for (let i = 0; i < 36; i++) splashes.push({ e: el('ellipse', { rx: 0, ry: 0, fill: 'none', stroke: '#e2eef8', 'stroke-width': 1.2, opacity: 0 }, L.splash), life: 0 });
+let splashIdx = 0;
+function spawnSplash(x, y, big) { const s = splashes[splashIdx++ % splashes.length]; s.x = x; s.y = y; s.life = 1; s.big = big ? 2 : 1; }
+// 叶子（大风）
+const leaves = [];
+for (let i = 0; i < 22; i++) {
+  const c = ['#6aa84f', '#9ccc65', '#e0b040', '#d88a3a'][i % 4];
+  leaves.push({ e: el('path', { d: 'M-6 0 Q0 -5 6 0 Q0 5 -6 0Z M-6 0 H6', fill: c, stroke: '#4d6b2f', 'stroke-width': .6 }, L.leaves), x: rand(0, 1700), y: rand(200, 880), ph: rand(0, TAU), s: rand(.8, 1.6), vr: rand(-6, 6), a: 0 });
+}
+L.leaves.style.opacity = 0;
+// 扬尘 & 速度线
+const dusts = [];
+for (let i = 0; i < 20; i++) dusts.push({ e: el('circle', { r: 0, fill: '#cdbb9d', opacity: 0 }, L.dust), life: 0 });
+let dustIdx = 0, dustAcc = 0;
+const speedLines = [];
+for (let i = 0; i < 16; i++) speedLines.push({ e: el('line', { stroke: '#fff', 'stroke-width': rand(1, 2.2), 'stroke-linecap': 'round', opacity: 0 }, L.speed), x: rand(0, 1600), y: rand(120, 880), k: rand(.7, 1.4) });
+// 刹车痕
+const skids = [];
+function skidEl() { return el('rect', { height: 4, rx: 2, fill: '#1e2126', opacity: .55 }, L.roadFx); }
+// 车铃波纹
+const bellRings = [];
+for (let i = 0; i < 3; i++) bellRings.push({ e: el('circle', { r: 0, fill: 'none', stroke: '#ffd45c', 'stroke-width': 2.5, opacity: 0 }, L.fly), life: 0 });
+const bellText = el('text', { 'font-size': 20, 'font-weight': 800, fill: '#ffd45c', stroke: '#6b4a00', 'stroke-width': .6, opacity: 0, 'text-anchor': 'middle', 'paint-order': 'stroke' }, L.fly);
+bellText.textContent = '叮铃～';
+let bellLife = 0, bellShake = 0;
+// 滴水
+const drips = [];
+for (let i = 0; i < 6; i++) drips.push({ e: el('ellipse', { rx: 1.8, ry: 2.6, fill: '#cfe6f7', opacity: 0 }, dripG), life: 0 });
+let dripAcc = 0;
+
+/* ---------------- 夜晚 & 灯光 ---------------- */
+const nightShade = el('rect', { x: -400, y: -1400, width: 2400, height: 3800, fill: 'url(#gNightShade)', opacity: 0 }, L.nightShade);
+nightShade.style.mixBlendMode = 'multiply';
+const stormShade = el('rect', { x: -400, y: -1400, width: 2400, height: 3800, fill: '#6e7a88', opacity: 0 }, L.stormShade);
+stormShade.style.mixBlendMode = 'multiply';
+L.lights.style.opacity = 0;
+const lampGlows = lamps.map(() => html(L.lights, `<g><path d="M30 ${RAIL_Y - 262} L56 ${RAIL_Y - 262} L150 ${ROAD_BOT - 40} L-40 ${ROAD_BOT - 40}Z" fill="url(#gLampCone)" style="mix-blend-mode:screen"/>
+  <circle cx="43" cy="${RAIL_Y - 262}" r="40" fill="url(#gGlow)"/><ellipse cx="55" cy="${ROAD_BOT - 60}" rx="130" ry="26" fill="#ffe7a6" opacity=".16"/></g>`));
+const lhLight = html(L.lights, `<g><circle cx="0" cy="0" r="30" fill="url(#gGlow)"/><path class="beam" d="" fill="url(#gLhBeam)" style="mix-blend-mode:screen"/></g>`);
+const lhBeam = lhLight.querySelector('.beam');
+const headBeam = html(L.lights, `<g><path d="M${G_.LAMP.x + 6} ${G_.LAMP.y - 5} L1750 ${GROUND_Y - 70} L1650 ${GROUND_Y + 110} L${G_.LAMP.x + 6} ${G_.LAMP.y + 5}Z" fill="url(#gBeam)" style="mix-blend-mode:screen" opacity=".7" filter="url(#fBlur4)"/>
+  <ellipse cx="1330" cy="${GROUND_Y + 2}" rx="240" ry="34" fill="#fff3c0" opacity=".22" style="mix-blend-mode:screen"/>
+  <circle cx="${G_.LAMP.x + 6}" cy="${G_.LAMP.y}" r="22" fill="url(#gGlow)"/></g>`);
+const tailGlow = el('circle', { cx: GEO.TAIL.x, cy: GEO.TAIL.y, r: 26, fill: 'url(#gRedGlow)', opacity: 0 }, L.fly);
+const winGlow = []; // 占位
+
+/* ---------------- 鱼：跃出水面 & 飞行 ---------------- */
+const fishes = [];
+for (let i = 0; i < 3; i++) {
+  const fg = g(L.fish, { class: 'clickable' });
+  const inner = html(fg, `<g>${fishSVG(1, false)}</g>`);
+  el('circle', { r: 30, fill: 'transparent' }, fg);
+  fg.style.display = 'none';
+  const f = { g: fg, inner, state: 'idle', t: 0 };
+  fg.addEventListener('click', e => { if (!dragMoved) { e.stopPropagation(); catchFish(f); } });
+  fishes.push(f);
+}
+const ripples = [];
+for (let i = 0; i < 8; i++) ripples.push({ e: el('ellipse', { fill: 'none', stroke: '#eaf8ff', 'stroke-width': 1.4, opacity: 0 }, L.fish), life: 0 });
+let rippleIdx = 0;
+function ripple(x, y, s) { const r = ripples[rippleIdx++ % ripples.length]; r.x = x; r.y = y; r.s = s; r.life = 1; }
+let nextJump = 1.2;
+function launchFish(f, x) {
+  f.state = 'jump'; f.t = 0; f.dur = rand(1.0, 1.4);
+  f.depth = rand(0, 1); f.y0 = lerp(520, 578, f.depth); f.sc = lerp(.45, .8, f.depth);
+  f.x = x != null ? x : rand(250, 1400); f.dir = Math.random() < .5 ? -1 : 1; f.vx = f.dir * rand(40, 90) * f.sc; f.h = rand(45, 85) * f.sc;
+  f.g.style.display = ''; ripple(f.x, f.y0, f.sc); sfx.splash(.4);
+}
+const flyers = [];
