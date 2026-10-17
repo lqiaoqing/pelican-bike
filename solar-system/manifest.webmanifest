@@ -1,0 +1,15 @@
+{
+  "name": "太阳系 · 开普勒轨道动画",
+  "short_name": "太阳系",
+  "description": "真实公转周期的太阳系 SVG 动画：天空图、合相日历、离线可用",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#02030a",
+  "theme_color": "#0a1030",
+  "lang": "zh-CN",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

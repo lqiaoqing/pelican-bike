@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="format-detection" content="telephone=no">
-<meta name="solar-build" content="v3-rich-20260926">
+<meta name="solar-build" content="v4-sky-20261017">
 <meta name="theme-color" content="#02030a">
 <title>太阳系 · 开普勒轨道 SVG 动画</title>
 <style>
@@ -177,8 +177,44 @@ body.compact .cuHead h2{font-size:19px}
 body.compact.wide .cuInfo{right:auto;max-width:52%;bottom:calc(10px + env(safe-area-inset-bottom,0px));max-height:52%;font-size:12px}
 body.compact.wide .cuBar{bottom:calc(10px + env(safe-area-inset-bottom,0px))}
 
+/* ---------- v4 ---------- */
+#btnSky.on,#btnCal.on{background:rgba(124,196,255,.22);border-color:rgba(124,196,255,.55)}
+.skySheet{width:min(560px,calc(100vw - 16px));max-height:calc(var(--vh,1vh)*100 - 120px)}
+body.compact .skySheet{max-height:calc(var(--vh,1vh)*88)}
+.skyForm{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin-bottom:8px;font-size:12.5px}
+.skyForm label{display:flex;align-items:center;gap:4px;white-space:nowrap}
+.skyForm input[type=number]{width:88px}
+.skyForm input[type=datetime-local]{width:168px;max-width:46vw}
+.skyForm select{max-width:110px}
+.skyForm .chk{font-size:12px}
+.mini{padding:5px 10px;font-size:12.5px}
+#skySvg{display:block;width:100%;height:min(52vw,340px);background:#050816;border-radius:12px;border:1px solid var(--line);margin:6px 0}
+body.compact #skySvg{height:min(58vw,300px)}
+.skyMeta{font-size:12.5px;color:var(--dim);margin:2px 0}
+.skyList{margin-top:6px;max-height:180px;overflow:auto;-webkit-overflow-scrolling:touch}
+.skyRow{display:grid;grid-template-columns:14px 3.2em 1fr auto;gap:6px;align-items:center;padding:4px 2px;border-bottom:1px solid rgba(255,255,255,.05);font-size:12.5px}
+.skyRow i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.skyRow.dim{opacity:.45}
+.skyRow .mag{color:#ffe2a8;font-variant-numeric:tabular-nums;min-width:3.5em;text-align:right}
+.skyRow em{grid-column:1/-1;font-style:normal;color:#93a0c2;font-size:11.5px;margin-left:20px}
+.evList .tag{flex:0 0 auto;font-size:11px;padding:1px 6px;border-radius:8px;background:rgba(124,196,255,.18);color:#cfe6ff}
+.evList .past{opacity:.7}
+.evList small{display:block;color:var(--dim);font-size:11.5px;margin-top:2px}
+.exportActs{display:flex;flex-direction:column;gap:10px;margin:8px 0}
+.exportActs button{padding:12px 14px;font-size:14px;text-align:left}
+body.skyOpen #insetWrap,body.skyOpen #scalebars{opacity:.25;pointer-events:none}
+
+#moreRow button{padding:6px 9px;font-size:12.5px}
+body.compact #moreRow button{padding:7px 10px;font-size:13px}
+
 </style>
 <link rel="icon" href="data:,">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0a1030">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="太阳系">
+<link rel="apple-touch-icon" href="icon.svg">
 </head>
 
 <body>
@@ -191,8 +227,8 @@ body.compact.wide .cuBar{bottom:calc(10px + env(safe-area-inset-bottom,0px))}
 
 <div id="legend" class="panel scrollable">
   <button class="close" id="legendClose" title="关闭">×</button>
-  <h1>太阳系 <small>Solar System · v3</small></h1>
-  <div class="sub">真实公转周期 · 真实偏心率与倾角 · 开普勒第二定律 · 卫星 / 矮行星 / 彗星 / 航天器</div>
+  <h1>太阳系 <small>Solar System · v4</small></h1>
+  <div class="sub">真实公转周期 · 天空图 · 合相日历 · 导出分享 · 可离线安装</div>
   <div class="chips" id="chips"></div>
   <div class="modeBadge" id="modeBadge"></div>
   <details id="legendDetails" open>
@@ -208,6 +244,10 @@ body.compact.wide .cuBar{bottom:calc(10px + env(safe-area-inset-bottom,0px))}
       <li><span class="key">小天体：</span>谷神星、冥王星与哈雷、恩克、海尔-波普彗星用真实轨道根数；阋神星、妊神星的位置为近似。木星特洛伊群、希尔达群为示意分布。</li>
       <li><span class="key">航天器：</span>示意轨迹——按真实发射 / 飞掠日期连接当时的行星位置，飞掠后按大致的渐近方向外推。</li>
       <li><span class="key">远方：</span>缩小视图可见终端激波（约 84–94 AU）、日球层顶（约 120 AU）与奥尔特云内缘（理论推测，约 2,000 AU 起）；日球层实际并非球形，此处为示意。</li>
+      <li><span class="key">今天的天空：</span>根据观测地点与时间，把太阳、月球、行星投到地平坐标系（高度/方位）。精度为裸眼级；未做光行差与章动精修。视星等为近似值。</li>
+      <li><span class="key">合相日历：</span>自动扫描约过去 3 年～未来 2.5 年的亮行星合相与水星/金星大距；日食/月食日期来自 NASA Eclipse 公报。合相为本图地心角距极小值。</li>
+      <li><span class="key">导出：</span>可一键导出 1080×1920 竖版 PNG 海报；短视频为浏览器本地录制的 WebM（约 4 秒）。不经任何服务器。</li>
+      <li><span class="key">离线 PWA：</span>在 Chrome / Safari / Edge 中可「添加到主屏幕」离线打开。微信内置浏览器通常无法安装 PWA，请用系统浏览器打开本页。</li>
     </ul>
     <div class="verify" id="verify"></div>
   </details>
@@ -242,6 +282,9 @@ body.compact.wide .cuBar{bottom:calc(10px + env(safe-area-inset-bottom,0px))}
   </div>
   <div class="row" id="moreRow">
     <button id="btnMode" title="示意比例 / 真实比例 (M)">⇄ 真实比例</button>
+    <button id="btnSky" title="今天的天空">🌌 天空</button>
+    <button id="btnCal" title="合相日历">📅 合相</button>
+    <button id="btnExport" title="导出分享">📤 导出</button>
     <button id="btnLayers" title="图层">☰ 图层</button>
     <button id="btnEvents" title="时间旅行">⏱ 时间旅行</button>
     <span class="sep"></span>
@@ -261,6 +304,40 @@ body.compact.wide .cuBar{bottom:calc(10px + env(safe-area-inset-bottom,0px))}
   <div class="sheetHead"><b>时间旅行 · 历史与未来事件</b><button class="close" data-close="eventsPanel">×</button></div>
   <div class="evList" id="evList"></div>
   <div class="note">跳转后动画会暂停，按 ▶ 继续。合相日期为地心视角，本图为日心俯视，位置接近但不完全重合。</div>
+</div>
+
+
+<div id="skyPanel" class="panel sheet scrollable hidden skySheet">
+  <div class="sheetHead"><b>今天的天空</b><button class="close" data-close="skyPanel" id="skyClose">×</button></div>
+  <div class="skyForm">
+    <label>城市
+      <select id="skyCity"></select>
+    </label>
+    <button type="button" id="skyGeo" class="mini">📍 定位</button>
+    <label>纬度 <input id="skyLat" type="number" step="0.0001"></label>
+    <label>经度 <input id="skyLon" type="number" step="0.0001"></label>
+    <label>时间 <input id="skyTime" type="datetime-local"></label>
+    <label class="chk"><input type="checkbox" id="skyUseSim"> 使用模拟时间</label>
+    <button type="button" id="skyApply" class="primary mini">更新</button>
+  </div>
+  <div id="skyWhen" class="skyMeta"></div>
+  <div id="skyDay" class="skyMeta"></div>
+  <svg id="skySvg" xmlns="http://www.w3.org/2000/svg" aria-label="全天图"></svg>
+  <div id="skyList" class="skyList"></div>
+  <div class="note">天顶居中，边缘为地平线；北/东/南/西已标注。高度、方位按给定地点与时间计算（UTC 换算到本地选择器）。太阳高度 &lt; −6° 视为夜晚。视星等 m 为近似值（土星未修正光环）。</div>
+</div>
+<div id="calPanel" class="panel sheet scrollable hidden">
+  <div class="sheetHead"><b>合相日历 · 约过去 3 年—未来 2 年</b><button class="close" data-close="calPanel">×</button></div>
+  <div class="evList" id="calList"></div>
+  <div class="note">合相 = 地心角距极小（亮行星对）；大距 = 水星/金星距日角极大。日食/月食日期取自 NASA Eclipse 公报，不另行推算食甚细节。点按即可跳转模拟日期。未来金星凌日要到 2117 年，本窗口内无。</div>
+</div>
+<div id="exportPanel" class="panel sheet scrollable hidden">
+  <div class="sheetHead"><b>导出分享</b><button class="close" data-close="exportPanel">×</button></div>
+  <div class="exportActs">
+    <button id="btnPoster" class="primary">🖼 导出竖版海报 PNG（1080×1920）</button>
+    <button id="btnClip">🎬 录制短视频 WebM（约 4 秒）</button>
+  </div>
+  <div class="note">海报在本地用 Canvas 渲染当前视图（或天空图），带标题与日期水印，适合发微信/小红书。短视频需浏览器支持 MediaRecorder（Chrome / Edge 最佳）；微信内置浏览器可能无法下载文件，请用系统浏览器打开。</div>
 </div>
 
 <div id="card" class="panel hidden scrollable"><div id="cardGrab"></div><button class="close" id="cardClose" title="关闭 (Esc)">×</button><div id="cardBody"></div></div>
@@ -905,7 +982,7 @@ function fmtElapsed(dt){
 function fmtLT(r){const s=r*LT_AU; if(s<3600) return `${(s/60).toFixed(1)} 分钟`; return `${(s/3600).toFixed(s<36000?2:1)} 小时`;}
 
 /* ====================== 每帧渲染 ====================== */
-let last=performance.now(), lastCard=0, lastHud=0;
+let last=performance.now(), lastCard=0, lastHud=0, lastSky=0;
 const LPRI={jupiter:2,saturn:3,uranus:4,neptune:5,earth:6,venus:7,mars:8,mercury:9};
 function setXY(e,x,y){e.setAttribute('x',x.toFixed(1));e.setAttribute('y',y.toFixed(1));}
 function renderView(V,now){
@@ -1383,6 +1460,408 @@ $('cuOut').onclick=()=>{CU.zoom=clamp(CU.zoom/1.4,0.25,80);};
   }
 })();
 
+/* ====================== 今天的天空：地平坐标 / 全天图 ====================== */
+/* 基于已有日心黄道位置 → 地心赤道 → 地平坐标。裸眼级精度（数角分），未做光行差/章动精修。 */
+const CITIES=[
+  ['北京',39.9042,116.4074],['上海',31.2304,121.4737],['广州',23.1291,113.2644],['深圳',22.5431,114.0579],
+  ['成都',30.5728,104.0668],['重庆',29.5630,106.5516],['西安',34.3416,108.9398],['武汉',30.5928,114.3055],
+  ['杭州',30.2741,120.1551],['南京',32.0603,118.7969],['天津',39.0842,117.2008],['苏州',31.2989,120.5853],
+  ['长沙',28.2282,112.9388],['郑州',34.7466,113.6254],['台北',25.0330,121.5654],['香港',22.3193,114.1694]
+];
+const SKY={on:false,lat:31.2304,lon:121.4737,city:'上海',useSim:false,timeMs:Date.now(),az0:0,dom:null};
+/* 视星等（近似）：行星按相角公式；太阳 / 满月为常数。来源：行星相角公式（Mallama & Hilton 2018 简化） */
+const MAG0={mercury:-0.42,venus:-4.40,mars:-1.52,jupiter:-9.40,saturn:-8.88,uranus:-7.19,neptune:-6.87};
+function planetMag(id,rHelio,rGeo,phaseDeg){
+  const i=phaseDeg, i2=i*i, i3=i2*i;
+  if(id==='mercury'){const V=MAG0.mercury+5*Math.log10(rHelio*rGeo)+0.038213*i-0.000273*i2+2e-6*i3;return V;}
+  if(id==='venus'){const V=MAG0.venus+5*Math.log10(rHelio*rGeo)+0.0009*i+0.000239*i2-6.5e-7*i3;return V;}
+  if(id==='mars') return MAG0.mars+5*Math.log10(rHelio*rGeo)+0.016*i;
+  if(id==='jupiter') return MAG0.jupiter+5*Math.log10(rHelio*rGeo)+0.005*i;
+  if(id==='saturn') return MAG0.saturn+5*Math.log10(rHelio*rGeo)+0.044*i; // 未修正光环，约 ±0.5
+  if(id==='uranus') return MAG0.uranus+5*Math.log10(rHelio*rGeo);
+  if(id==='neptune') return MAG0.neptune+5*Math.log10(rHelio*rGeo);
+  return 99;
+}
+function moonMag(phaseDeg){ // 满月 ≈ −12.7；新月附近很暗
+  const k=(1+Math.cos(phaseDeg*DEG))/2; return -12.73+1.49*Math.abs(phaseDeg)*DEG+0.043*Math.pow(phaseDeg-180,4)*1e-9;
+}
+/* 简化月球：平均轨道根数（足够裸眼；误差通常 < 1°） */
+function moonEcliptic(t){ // t = years from J2000
+  const d=t*365.25; // days
+  const L=(218.316+13.176396*d)%360, M=(134.963+13.064993*d)%360, F=(93.272+13.229350*d)%360;
+  const lon=L+6.289*Math.sin(M*DEG), lat=5.128*Math.sin(F*DEG), rp=1-0.0549*Math.cos(M*DEG);
+  const dist=60.2666*rp*6378.14/AU_KM; // AU
+  const lo=lon*DEG, la=lat*DEG;
+  return {pos:[dist*Math.cos(la)*Math.cos(lo),dist*Math.cos(la)*Math.sin(lo),dist*Math.sin(la)],r:dist,lon,lat};
+}
+function eclToEq(p){ // 黄道 → 赤道（J2000 倾角）
+  const c=Math.cos(OBL),s=Math.sin(OBL); return [p[0],p[1]*c-p[2]*s,p[1]*s+p[2]*c];
+}
+function jdFromMs(ms){return ms/86400000+2440587.5;}
+function gmstRad(ms){ // IAU 近似
+  const jd=jdFromMs(ms), T=(jd-2451545.0)/36525;
+  let g=280.46061837+360.98564736629*(jd-2451545.0)+0.000387933*T*T; g=((g%360)+360)%360; return g*DEG;
+}
+function eqToHoriz(ra,dec,lat,lon,ms){
+  const lst=gmstRad(ms)+lon*DEG, ha=lst-ra;
+  const sl=Math.sin(lat*DEG),cl=Math.cos(lat*DEG), sd=Math.sin(dec),cd=Math.cos(dec), sh=Math.sin(ha),ch=Math.cos(ha);
+  const alt=Math.asin(sd*sl+cd*cl*ch), az=Math.atan2(-cd*cl*sh,sd*cl-cd*sl*ch);
+  return {alt:alt/DEG, az:((az/DEG)+360)%360, ha:ha/DEG};
+}
+function geoOf(id,t){ // 地心黄道（AU）
+  if(id==='sun'){const e=stateOf(P_BY.earth,t);return {pos:scl(e.pos,-1),r:e.r,helio:0};}
+  if(id==='moon'){const m=moonEcliptic(t);return {pos:m.pos,r:m.r,helio:stateOf(P_BY.earth,t).r};}
+  const e=stateOf(P_BY.earth,t), p=stateOf(P_BY[id],t);
+  const g=[p.pos[0]-e.pos[0],p.pos[1]-e.pos[1],p.pos[2]-e.pos[2]]; return {pos:g,r:vlen(g),helio:p.r,e:e.r};
+}
+function skyBody(id,lat,lon,ms){
+  const t=(ms-J2000)/YEAR_MS, g=geoOf(id,t), eq=eclToEq(g.pos);
+  const r=vlen(eq)||1e-9, ra=Math.atan2(eq[1],eq[0]), dec=Math.asin(eq[2]/r);
+  const h=eqToHoriz(ra,dec,lat,lon,ms);
+  let mag=99, phase=0;
+  if(id==='sun') mag=-26.74;
+  else if(id==='moon'){
+    const sun=geoOf('sun',t), cosphi=clamp(dot(norm(g.pos),norm(sun.pos)),-1,1); phase=Math.acos(cosphi)/DEG;
+    mag=moonMag(phase);
+  }else{
+    const cosphi=clamp((g.helio*g.helio+g.r*g.r-g.e*g.e)/(2*g.helio*g.r),-1,1);
+    phase=Math.acos(cosphi)/DEG; mag=planetMag(id,g.helio,g.r,phase);
+  }
+  return {id,ra:((ra/DEG)+360)%360,dec:dec/DEG,alt:h.alt,az:h.az,r:g.r,mag,phase};
+}
+const SKY_IDS=['sun','moon','mercury','venus','mars','jupiter','saturn','uranus','neptune'];
+const SKY_META={sun:{zh:'太阳',col:'#ffd27a'},moon:{zh:'月球',col:'#e8e8f0'},mercury:{zh:'水星',col:'#c9c2b8'},venus:{zh:'金星',col:'#f0cf8a'},
+  mars:{zh:'火星',col:'#e0673d'},jupiter:{zh:'木星',col:'#d8a878'},saturn:{zh:'土星',col:'#e8cf96'},uranus:{zh:'天王星',col:'#9fe3ee'},neptune:{zh:'海王星',col:'#5b86ff'}};
+
+function skyMs(){return SKY.useSim?(J2000+simT*YEAR_MS):SKY.timeMs;}
+function openSky(){
+  SKY.on=true; document.body.classList.add('skyOpen');
+  $('skyPanel').classList.remove('hidden');
+  if(!SKY._opened){SKY._opened=true; SKY.timeMs=Date.now(); SKY.useSim=false;}
+  const d=new Date(SKY.useSim?(J2000+simT*YEAR_MS):SKY.timeMs);
+  $('skyTime').value=new Date(d-d.getTimezoneOffset()*60000).toISOString().slice(0,16);
+  syncSkyForm(); renderSky();
+}
+function closeSky(){SKY.on=false;document.body.classList.remove('skyOpen');$('skyPanel').classList.add('hidden');}
+function syncSkyForm(){
+  $('skyLat').value=SKY.lat.toFixed(4); $('skyLon').value=SKY.lon.toFixed(4);
+  $('skyCity').value=SKY.city; $('skyUseSim').checked=SKY.useSim;
+}
+function applySkyForm(){
+  SKY.lat=clamp(+$('skyLat').value,-90,90); SKY.lon=clamp(+$('skyLon').value,-180,180);
+  SKY.useSim=$('skyUseSim').checked;
+  if(!SKY.useSim){const v=$('skyTime').value; if(v) SKY.timeMs=new Date(v).getTime();}
+  renderSky();
+}
+function setCity(name){
+  const c=CITIES.find(x=>x[0]===name); if(!c)return;
+  SKY.city=c[0]; SKY.lat=c[1]; SKY.lon=c[2]; syncSkyForm(); renderSky();
+}
+function tryGeo(){
+  if(!navigator.geolocation){toast('当前环境不支持定位');return;}
+  toast('正在获取位置…',2000);
+  navigator.geolocation.getCurrentPosition(pos=>{
+    SKY.lat=pos.coords.latitude; SKY.lon=pos.coords.longitude; SKY.city='当前位置';
+    syncSkyForm(); renderSky(); toast(`已定位：${SKY.lat.toFixed(2)}°N, ${SKY.lon.toFixed(2)}°E`);
+  },err=>toast('定位失败：'+(err.message||'被拒绝或不可用')),{enableHighAccuracy:false,timeout:8000,maximumAge:600000});
+}
+
+function skyProject(alt,az,R){ // 立体投影：天顶居中，方位角从北顺时针；仅高度≥0
+  if(alt<-0.5) return null;
+  const z=Math.max(0,Math.min(90,alt)), rho=R*(90-z)/90, a=(az-SKY.az0)*DEG;
+  return [rho*Math.sin(a), -rho*Math.cos(a)];
+}
+function renderSky(){
+  if(!SKY.on) return;
+  const svg=$('skySvg'), W=svg.clientWidth||innerWidth, H=svg.clientHeight||(innerHeight*0.55);
+  const pad=compact?28:40, R=Math.min(W,H)/2-pad, cx=W/2, cy=H/2+(compact?8:0);
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  const ms=skyMs(), bodies=SKY_IDS.map(id=>skyBody(id,SKY.lat,SKY.lon,ms));
+  const sun=bodies.find(b=>b.id==='sun'), night=sun.alt< -6, twi=sun.alt>=-6&&sun.alt<0, day=sun.alt>=0;
+  const bg=day?'#6aa6d8':(twi?'#1a2744':'#050816');
+  let html=`<rect width="${W}" height="${H}" fill="${bg}"/>`;
+  // 地平圈与高度圈
+  html+=`<circle cx="${cx}" cy="${cy}" r="${R}" fill="${day?'#8ebf7a22':'#0a1430'}" stroke="#cfd8f5" stroke-opacity=".55" stroke-width="1.5"/>`;
+  for(const a of [30,60]){const r=R*(90-a)/90;html+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#cfd8f5" stroke-opacity=".2" stroke-dasharray="3 5"/>`;}
+  // 方位
+  for(const [lab,az] of [['北',0],['东',90],['南',180],['西',270]]){
+    const p=skyProject(0,az,R); if(!p)continue;
+    html+=`<text x="${(cx+p[0]*1.08).toFixed(1)}" y="${(cy+p[1]*1.08).toFixed(1)}" text-anchor="middle" fill="#ffe2a8" font-size="13" font-weight="600">${lab}</text>`;
+  }
+  html+=`<text x="${cx}" y="${cy+4}" text-anchor="middle" fill="#cfd8f5" font-size="11" opacity=".7">天顶</text>`;
+  // 星点装饰（固定伪随机）
+  if(!day){const rng=rngFactory(91); for(let i=0;i<120;i++){const a=rng()*90,az=rng()*360,p=skyProject(a,az,R);if(!p)continue;
+    html+=`<circle cx="${(cx+p[0]).toFixed(1)}" cy="${(cy+p[1]).toFixed(1)}" r="${(0.4+rng()*1.1).toFixed(1)}" fill="#fff" opacity="${(0.25+rng()*0.55).toFixed(2)}"/>`;}}
+  // 天体
+  const rows=[];
+  for(const b of bodies){
+    const meta=SKY_META[b.id]; const up=b.alt>=-0.2;
+    const size=b.id==='sun'?14:(b.id==='moon'?10:Math.max(2.2,6.5-b.mag*0.55));
+    if(up){const p=skyProject(Math.max(0,b.alt),b.az,R); if(p){
+      html+=`<g><circle cx="${(cx+p[0]).toFixed(1)}" cy="${(cy+p[1]).toFixed(1)}" r="${size.toFixed(1)}" fill="${meta.col}" stroke="#02030a" stroke-width="1"/>`;
+      if(b.id==='moon'){ // 月相示意
+        const k=(1+Math.cos(b.phase*DEG))/2, rx=size*(1-2*Math.min(k,1-k));
+        html+=`<path d="M${(cx+p[0]).toFixed(1)} ${(cy+p[1]-size).toFixed(1)} A${size} ${size} 0 0 ${b.phase<180?1:0} ${(cx+p[0]).toFixed(1)} ${(cy+p[1]+size).toFixed(1)} A${Math.abs(rx).toFixed(1)} ${size} 0 0 ${((b.phase<180)===(rx>0))?0:1} ${(cx+p[0]).toFixed(1)} ${(cy+p[1]-size).toFixed(1)}" fill="#050816" opacity=".75"/>`;
+      }
+      if(b.id==='saturn') html+=`<ellipse cx="${(cx+p[0]).toFixed(1)}" cy="${(cy+p[1]).toFixed(1)}" rx="${(size*1.8).toFixed(1)}" ry="${(size*.5).toFixed(1)}" fill="none" stroke="${meta.col}" stroke-opacity=".7"/>`;
+      html+=`<text x="${(cx+p[0]+size+3).toFixed(1)}" y="${(cy+p[1]+4).toFixed(1)}" fill="${meta.col}" font-size="12" font-weight="600">${meta.zh}</text></g>`;
+    }}
+    rows.push({b,meta,up});
+  }
+  svg.innerHTML=html;
+  // 列表
+  const d=new Date(ms);
+  const local=d.toLocaleString('zh-CN',{hour12:false,timeZone:'Asia/Shanghai'});
+  $('skyWhen').textContent=`${SKY.city} · ${SKY.lat.toFixed(2)}°N ${SKY.lon.toFixed(2)}°E · ${local}（UTC+8 显示）`;
+  $('skyDay').textContent=day?'白天（太阳在地平线上）':(twi?'晨昏蒙影':'夜晚');
+  $('skyDay').style.color=day?'#ffe2a8':(twi?'#ffb347':'#9fe0ff');
+  rows.sort((a,b)=>b.b.alt-a.b.alt);
+  $('skyList').innerHTML=rows.map(({b,meta,up})=>{
+    const mag=b.mag<-20?'—':(b.mag<0?b.mag.toFixed(1):'+'+b.mag.toFixed(1));
+    const alt=b.alt.toFixed(1), az=b.az.toFixed(1);
+    const note=b.id==='moon'?` · 月相角 ${b.phase.toFixed(0)}°`:(b.id!=='sun'?` · 距地 ${b.r<0.01?(b.r*AU_KM/1000).toFixed(0)+' 万 km':b.r.toFixed(3)+' AU'}`:'');
+    const eye=b.id==='uranus'||b.id==='neptune'?'<em>通常需望远镜</em>':(up?'':''); return `<div class="skyRow${up?'':' dim'}"><i style="background:${meta.col}"></i><b>${meta.zh}</b><span>高度 ${alt}° · 方位 ${az}°</span><span class="mag">m≈${mag}</span>${up?'':"<em>地平线下</em>"}${eye}</div>`;
+  }).join('');
+}
+
+/* ====================== 合相日历：自动扫描 + 已知日食 ====================== */
+/* 行星合相：扫描地心角距极小值；阈值按亮度调整。日食用权威发表日期（不自行推算食甚细节）。 */
+function angSepGeo(idA,idB,t){
+  const a=geoOf(idA,t).pos, b=geoOf(idB,t).pos;
+  return Math.acos(clamp(dot(norm(a),norm(b)),-1,1))/DEG;
+}
+function findMinima(pair,t0,t1,step,thresh){
+  const out=[]; let prev=angSepGeo(pair[0],pair[1],t0), prevD=-1;
+  for(let t=t0+step;t<=t1;t+=step){
+    const s=angSepGeo(pair[0],pair[1],t), d=s-prev;
+    if(prevD<0&&d>0&&prev<=thresh){
+      // 三段抛物线细化
+      const tA=t-2*step,tB=t-step,tC=t, sA=angSepGeo(pair[0],pair[1],tA),sB=prev,sC=s;
+      const denom=(sA-2*sB+sC)||1e-9; let tMin=tB;
+      if(Math.abs(denom)>1e-12) tMin=tB - step*(sC-sA)/(2*denom);
+      tMin=clamp(tMin,tA,tC);
+      const sMin=angSepGeo(pair[0],pair[1],tMin);
+      if(sMin<=thresh) out.push({t:tMin,sep:sMin,a:pair[0],b:pair[1]});
+    }
+    prevD=d; prev=s;
+  }
+  return out;
+}
+function elongSun(id,t){return angSepGeo(id,'sun',t);}
+function findMaxElong(id,t0,t1,step){
+  const out=[]; let prev=elongSun(id,t0),prevD=0;
+  for(let t=t0+step;t<=t1;t+=step){
+    const s=elongSun(id,t),d=s-prev;
+    if(prevD>0&&d<0&&prev>15){
+      const tA=t-2*step,tB=t-step; let tM=tB;
+      const sA=elongSun(id,tA),sB=prev,sC=s,den=(sA-2*sB+sC)||1e-9;
+      if(Math.abs(den)>1e-12) tM=tB-step*(sC-sA)/(2*den);
+      const e=elongSun(id,tM), gp=geoOf(id,tM).pos, gs=geoOf('sun',tM).pos; let dLon=((Math.atan2(gp[1],gp[0])-Math.atan2(gs[1],gs[0]))/DEG+540)%360-180; const side=dLon>0?'东大距':'西大距';
+      out.push({t:tM,sep:e,a:id,b:'sun',kind:'elong',side});
+    }
+    prevD=d; prev=s;
+  }
+  return out;
+}
+/* 日食 / 月食：NASA Eclipse 页面发表的日期（只收录全食/日全食/日环食/月全食/月偏食中确定的） */
+const ECLIPSES=[
+  // 近年与未来两年内（UTC 日期）
+  [2021,12,4,'日全食（南极）'],
+  [2022,5,16,'月全食'],
+  [2022,11,8,'月全食'],
+  [2023,4,20,'日全食（东帝汶—澳大利亚）'],
+  [2023,10,14,'日环食（美洲）'],
+  [2023,10,28,'月偏食'],
+  [2024,4,8,'日全食（墨西哥—美国—加拿大）'],
+  [2024,9,18,'月偏食'],
+  [2025,3,14,'月全食'],
+  [2025,3,29,'日偏食'],
+  [2025,9,7,'月全食'],
+  [2025,9,21,'日偏食'],
+  [2026,2,17,'日环食（南极）'],
+  [2026,3,3,'月全食'],
+  [2026,8,12,'日全食（北极—西班牙—冰岛）'],
+  [2026,8,28,'月偏食'],
+  [2027,2,6,'日环食（南美—非洲）'],
+  [2027,2,21,'月偏食'],
+  [2027,7,2,'日偏食'],
+  [2027,8,2,'日全食（北非—西亚）'],
+  [2027,8,17,'月偏食'],
+  [2028,1,12,'日偏食'],
+  [2028,1,26,'日环食（美洲—欧洲—北非）'],
+  [2028,7,6,'月偏食'],
+  [2028,7,22,'日全食（澳大利亚—新西兰）']
+];
+const PAIR_LABEL={
+  'jupiter-saturn':'木星—土星合相','venus-jupiter':'金星—木星合相','venus-saturn':'金星—土星合相',
+  'mars-jupiter':'火星—木星合相','mars-saturn':'火星—土星合相','venus-mars':'金星—火星合相',
+  'mercury-venus':'水星—金星合相','venus-moon':'金星—月球合相'
+};
+function pairKey(a,b){return [a,b].sort().join('-');}
+let CAL_CACHE=null;
+function buildCalendar(){
+  if(CAL_CACHE) return CAL_CACHE;
+  const now=yearsNow(), t0=now-3, t1=now+2.5;
+  const list=[];
+  // 亮行星合相
+  const pairs=[['jupiter','saturn'],['venus','jupiter'],['venus','saturn'],['mars','jupiter'],['mars','saturn'],['venus','mars'],['mercury','venus']];
+  const thresh={'jupiter,saturn':1.5,'venus,jupiter':2.0,'venus,saturn':2.0,'mars,jupiter':2.0,'mars,saturn':2.0,'venus,mars':2.5,'mercury,venus':1.5};
+  for(const p of pairs){
+    const th=thresh[p.join(',')]||2;
+    const mins=findMinima(p,t0,t1,1/365.25,th); // 每天一步
+    for(const m of mins){
+      // 去重：同一对 10 天内只留更近的
+      const lab=PAIR_LABEL[pairKey(m.a,m.b)]||(SKY_META[m.a].zh+'—'+SKY_META[m.b].zh+'合相');
+      list.push({t:m.t,kind:'conj',title:lab,detail:`地心角距 ${m.sep.toFixed(2)}°`,a:m.a,b:m.b,sep:m.sep});
+    }
+  }
+  // 金星大距
+  for(const m of findMaxElong('venus',t0,t1,1/365.25)){
+    list.push({t:m.t,kind:'elong',title:`金星${m.side}`,detail:`距日角 ${m.sep.toFixed(1)}°`,a:'venus',b:'sun',sep:m.sep});
+  }
+  // 水星大距（只保留 >18°）
+  for(const m of findMaxElong('mercury',t0,t1,0.5/365.25)){
+    if(m.sep<18) continue;
+    list.push({t:m.t,kind:'elong',title:`水星${m.side}`,detail:`距日角 ${m.sep.toFixed(1)}°`,a:'mercury',b:'sun',sep:m.sep});
+  }
+  // 日食月食
+  for(const e of ECLIPSES){
+    const t=tDate(e[0],e[1],e[2]); if(t<t0||t>t1) continue;
+    list.push({t,kind:'eclipse',title:e[3],detail:'日期来源：NASA Eclipse 公报',y:e[0],m:e[1],d:e[2]});
+  }
+  // 合并去重（同 kind+相近日期）
+  list.sort((a,b)=>a.t-b.t);
+  const uniq=[];
+  for(const e of list){
+    const last=uniq[uniq.length-1];
+    if(last&&last.kind===e.kind&&last.title===e.title&&Math.abs(last.t-e.t)<10/365.25){
+      if((e.sep||99)<(last.sep||99)) uniq[uniq.length-1]=e;
+    }else uniq.push(e);
+  }
+  CAL_CACHE=uniq;
+  return uniq;
+}
+function fillCalPanel(){
+  const box=$('calList'); if(!box||box.dataset.ready) return;
+  const list=buildCalendar(), now=yearsNow();
+  box.innerHTML=list.map(e=>{
+    const d=new Date(J2000+e.t*YEAR_MS);
+    const ds=`${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+    const past=e.t<now, tag=e.kind==='eclipse'?'食':(e.kind==='elong'?'距':'合');
+    return `<button data-t="${e.t}" data-a="${e.a||''}" class="${past?'past':''}"><span class="d">${ds}</span><span class="tag">${tag}</span><span>${e.title}<small>${e.detail}</small></span></button>`;
+  }).join('');
+  box.dataset.ready='1';
+  box.onclick=ev=>{
+    const b=ev.target.closest('button'); if(!b)return;
+    const t=+b.dataset.t; simT=t; setPlay(false);
+    if(b.dataset.a&&P_BY[b.dataset.a]) select(b.dataset.a);
+    if(compact) $('calPanel').classList.add('hidden');
+    toast('已跳转到 '+b.querySelector('.d').textContent+'：'+b.querySelector('span:last-child').childNodes[0].textContent);
+  };
+}
+
+/* ====================== 导出分享：竖版海报 PNG + 短视频 WebM ====================== */
+function posterTitle(){
+  if(SKY.on) return '今天的天空 · '+SKY.city;
+  if(selected){const o=objOf(selected); return o?o.zh+' · 太阳系':'太阳系';}
+  return '太阳系 · 开普勒轨道';
+}
+function posterSub(){
+  if(SKY.on){const d=new Date(skyMs());return d.toLocaleString('zh-CN',{hour12:false})+' · '+SKY.lat.toFixed(2)+'°N '+SKY.lon.toFixed(2)+'°E';}
+  return fmtDate(simT)+(modeTarget===1?' · 真实比例':' · 示意比例');
+}
+async function exportPoster(){
+  toast('正在生成海报…',4000);
+  try{
+    const W=1080,H=1920, canvas=document.createElement('canvas'); canvas.width=W; canvas.height=H;
+    const ctx=canvas.getContext('2d');
+    // 背景
+    const g=ctx.createRadialGradient(W/2,H*0.4,0,W/2,H*0.4,H*0.7);
+    g.addColorStop(0,'#0a1030'); g.addColorStop(0.55,'#050818'); g.addColorStop(1,'#010207');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    // 源 SVG
+    const src=SKY.on?$('skySvg'):$('stage');
+    const xml=new XMLSerializer().serializeToString(src);
+    const svgStr=xml.includes('xmlns')?xml:xml.replace('<svg','<svg xmlns="http://www.w3.org/2000/svg"');
+    const blob=new Blob([svgStr],{type:'image/svg+xml;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url;});
+    // 将舞台绘入中部（留出标题与页脚）
+    const top=180, bot=220, areaH=H-top-bot, areaW=W-80;
+    const s=Math.min(areaW/img.width,areaH/img.height);
+    const dw=img.width*s, dh=img.height*s;
+    ctx.drawImage(img,(W-dw)/2,top+(areaH-dh)/2,dw,dh);
+    URL.revokeObjectURL(url);
+    // 标题
+    ctx.fillStyle='#ffe2a8'; ctx.font='700 52px "Segoe UI","PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.textAlign='center'; ctx.fillText(posterTitle(),W/2,90);
+    ctx.fillStyle='#cfd8f5'; ctx.font='400 28px "Segoe UI","PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText(posterSub(),W/2,140);
+    // 页脚
+    ctx.fillStyle='rgba(255,255,255,.12)'; ctx.fillRect(60,H-160,W-120,2);
+    ctx.fillStyle='#93a0c2'; ctx.font='400 24px "Segoe UI","PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.fillText('太阳系动画 · 开普勒轨道 · 本地生成 · 无网络请求',W/2,H-110);
+    ctx.fillText('lqiaoqing.github.io/pelican-bike/solar-system/',W/2,H-70);
+    // 下载
+    const a=document.createElement('a');
+    a.download=`solar-${SKY.on?'sky':'view'}-${Date.now()}.png`;
+    a.href=canvas.toDataURL('image/png'); a.click();
+    toast('海报已保存（1080×1920 PNG）');
+  }catch(err){console.error(err);toast('导出失败：'+err.message);}
+}
+
+let recState=null;
+async function exportClip(){
+  if(SKY.on){toast('请先关闭「今天的天空」再录短视频');return;}
+  if(recState){toast('正在录制中…');return;}
+  toast('开始录制约 4 秒…',2000);
+  const W=720,H=1280;
+  const canvas=document.createElement('canvas'); canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  const stream=canvas.captureStream(30);
+  let mime='video/webm;codecs=vp9';
+  if(!MediaRecorder.isTypeSupported(mime)) mime='video/webm;codecs=vp8';
+  if(!MediaRecorder.isTypeSupported(mime)) mime='video/webm';
+  if(!window.MediaRecorder||!MediaRecorder.isTypeSupported(mime)){toast('当前浏览器不支持 WebM 录制');return;}
+  const chunks=[]; const rec=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:2500000});
+  rec.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};
+  const done=new Promise(res=>rec.onstop=()=>res());
+  rec.start();
+  const tEnd=performance.now()+4000;
+  const wasPlaying=playing; setPlay(true);
+  recState={canvas,ctx,rec};
+  function drawFrame(){
+    const g=ctx.createRadialGradient(W/2,H*0.4,0,W/2,H*0.4,H*0.7);
+    g.addColorStop(0,'#0a1030'); g.addColorStop(1,'#010207');
+    ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    // 栅格化当前 SVG
+    const xml=new XMLSerializer().serializeToString($('stage'));
+    const svgStr=xml.includes('xmlns')?xml:xml.replace('<svg','<svg xmlns="http://www.w3.org/2000/svg"');
+    const url='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svgStr);
+    const img=new Image();
+    img.onload=()=>{
+      const top=120,bot=100,areaH=H-top-bot,s=Math.min((W-40)/img.width,areaH/img.height);
+      ctx.drawImage(img,(W-img.width*s)/2,top+(areaH-img.height*s)/2,img.width*s,img.height*s);
+      ctx.fillStyle='#ffe2a8'; ctx.font='600 32px sans-serif'; ctx.textAlign='center';
+      ctx.fillText(posterTitle(),W/2,60);
+      ctx.fillStyle='#cfd8f5'; ctx.font='400 20px sans-serif'; ctx.fillText(posterSub(),W/2,95);
+      ctx.fillStyle='#93a0c2'; ctx.font='400 18px sans-serif'; ctx.fillText('太阳系动画',W/2,H-50);
+      if(performance.now()<tEnd) requestAnimationFrame(drawFrame);
+      else {
+        rec.stop(); recState=null; setPlay(wasPlaying);
+        done.then(()=>{
+          const blob=new Blob(chunks,{type:mime});
+          const a=document.createElement('a'); a.download=`solar-clip-${Date.now()}.webm`;
+          a.href=URL.createObjectURL(blob); a.click();
+          toast('短视频已保存（WebM，约 4 秒）');
+        });
+      }
+    };
+    img.src=url;
+  }
+  requestAnimationFrame(drawFrame);
+}
+
 /* ====================== 模式切换：示意比例 ↔ 真实比例 ====================== */
 function setMode(t){
   modeTarget=t; document.body.classList.toggle('trueMode',t===1);
@@ -1417,11 +1896,19 @@ $('vInner').onclick=()=>preset(Math.min(modeTarget===1?60:12,innerZoom()));
 $('btnMore').onclick=()=>{document.body.classList.toggle('moreOpen');setTimeout(layout,0);};
 $('btnInfo').onclick=()=>document.body.classList.toggle('legendOpen');
 $('legendClose').onclick=()=>document.body.classList.remove('legendOpen');
-function togglePanel(id){const other=id==='layersPanel'?'eventsPanel':'layersPanel';$(other).classList.add('hidden');$(id).classList.toggle('hidden');
-  if(compact){deselectCardOnly();}}
+const FEATURE_PANELS=['layersPanel','eventsPanel','skyPanel','calPanel','exportPanel'];
+function closeFeaturePanels(except){FEATURE_PANELS.forEach(id=>{if(id!==except)$(id).classList.add('hidden');}); if(except!=='skyPanel'&&SKY.on)closeSky();}
+function togglePanel(id){const open=$(id).classList.contains('hidden'); closeFeaturePanels(open?id:null); if(open)$(id).classList.remove('hidden'); else $(id).classList.add('hidden');
+  if(compact){deselectCardOnly();}
+  if(id==='skyPanel'&&open) openSky();
+  if(id==='calPanel'&&open) fillCalPanel();
+}
 $('btnLayers').onclick=()=>togglePanel('layersPanel');
 $('btnEvents').onclick=()=>togglePanel('eventsPanel');
-document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>$(b.getAttribute('data-close')).classList.add('hidden'));
+$('btnSky').onclick=()=>togglePanel('skyPanel');
+$('btnCal').onclick=()=>togglePanel('calPanel');
+$('btnExport').onclick=()=>togglePanel('exportPanel');
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>{const id=b.getAttribute('data-close');$(id).classList.add('hidden'); if(id==='skyPanel')closeSky();});
 // 图层面板
 for(const [id,name] of LAYERS){
   const lb=document.createElement('label'); lb.innerHTML=`<input type="checkbox" id="L_${id}"${L[id]?' checked':''}> ${name}`;
@@ -1610,7 +2097,7 @@ addEventListener('keydown',e=>{
   const k=e.key;
   if(CU.open){if(k==='Escape')closeCloseup();else if(k===' '){e.preventDefault();setPlay(!playing);}else if(k==='+'||k==='=')$('cuIn').click();else if(k==='-')$('cuOut').click();return;}
   if(k===' '){e.preventDefault();setPlay(!playing);}
-  else if(k==='Escape'){if(!$('layersPanel').classList.contains('hidden')||!$('eventsPanel').classList.contains('hidden')){$('layersPanel').classList.add('hidden');$('eventsPanel').classList.add('hidden');}else deselect();}
+  else if(k==='Escape'){if(FEATURE_PANELS.some(id=>!$(id).classList.contains('hidden'))){closeFeaturePanels(null);}else deselect();}
   else if(k==='+'||k==='=')zoomAt(1.25,MV.cx+MV.tpx,MV.cy+MV.tpy);
   else if(k==='-'||k==='_')zoomAt(.8,MV.cx+MV.tpx,MV.cy+MV.tpy);
   else if(k==='0')preset(1);
@@ -1619,9 +2106,32 @@ addEventListener('keydown',e=>{
   else if(k==='l'||k==='L')$('tLabels').click();
   else if(k==='o'||k==='O')$('tOrbits').click();
   else if(k==='m'||k==='M')$('btnMode').click();
+  else if(k==='k'||k==='K')$('btnSky').click();
+  else if(k==='y'||k==='Y')$('btnCal').click();
   else if((k==='c'||k==='C')&&selected&&(P_BY[selected]||selected==='pluto'))openCloseup(selected);
   else if(k>='1'&&k<='8')select(PLANETS[+k-1].id);
 });
+
+
+/* ====================== v4：天空 / 合相 / 导出 初始化 ====================== */
+(function(){
+  const sel=$('skyCity');
+  CITIES.forEach(([n,la,lo])=>{const o=document.createElement('option');o.value=n;o.textContent=n;sel.appendChild(o);});
+  sel.value=SKY.city;
+  sel.onchange=()=>setCity(sel.value);
+  $('skyGeo').onclick=tryGeo;
+  $('skyApply').onclick=applySkyForm;
+  $('skyUseSim').onchange=()=>{SKY.useSim=$('skyUseSim').checked;renderSky();};
+  $('skyTime').onchange=()=>{SKY.useSim=false;$('skyUseSim').checked=false;applySkyForm();};
+  $('skyClose').onclick=()=>{closeSky();$('skyPanel').classList.add('hidden');};
+  $('btnPoster').onclick=()=>{exportPoster();};
+  $('btnClip').onclick=()=>{exportClip();};
+  // 默认城市：若时区为上海则保持；否则尝试定位（安静失败）
+  try{
+    const tz=Intl.DateTimeFormat().resolvedOptions().timeZone||'';
+    if(/Shanghai|Beijing|Chongqing|Harbin/.test(tz)) setCity('上海');
+  }catch(_){}
+})();
 
 /* ====================== 主循环 ====================== */
 let perfN=0,perfAcc=0;
@@ -1656,6 +2166,7 @@ function frame(now){
   if(L.inset&&getComputedStyle($('insetWrap')).display!=='none') renderView(IV,now);
   modeDirty=false;
   hud(now);
+  if(SKY.on&&now-lastSky>500){lastSky=now;renderSky();}
   requestAnimationFrame(frame);
 }
 function hud(now){
@@ -1705,3 +2216,15 @@ requestAnimationFrame(t=>{last=t;frame(t);});
 </script>
 </body>
 </html>
+
+/* ====================== PWA：注册 Service Worker ====================== */
+(function(){
+  if(!('serviceWorker' in navigator)) return;
+  if(location.protocol!=='http:'&&location.protocol!=='https:') return;
+  const base=new URL('.',location.href);
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register(new URL('sw.js',base),{scope:base.pathname}).then(reg=>{
+      console.log('[pwa] SW registered',reg.scope);
+    }).catch(err=>console.log('[pwa] SW failed',err.message));
+  });
+})();
